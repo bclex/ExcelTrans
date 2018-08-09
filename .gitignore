@@ -1,0 +1,13 @@
+.vs/
+[Dd]ebug/
+[Rr]elease/
+build/
+[Bb]in/
+[Oo]bj/
+packages/
+_build/
+FakesAssemblies/
+*.suo
+*.user
+_ReSharper.*/
+*resharper.user
