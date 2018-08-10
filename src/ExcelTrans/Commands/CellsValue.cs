@@ -1,52 +1,44 @@
-﻿using OfficeOpenXml;
-using System.IO;
+﻿using System.IO;
 
 namespace ExcelTrans.Commands
 {
     public struct CellsValue : IExcelCommand
     {
         public string Cells { get; private set; }
-        public string[] Values { get; private set; }
+        public string Value { get; private set; }
+        public bool Formula { get; private set; }
 
-        public CellsValue(int row, int col, params string[] values)
-            : this(ExcelCellBase.GetAddress(row, col), values) { }
-        public CellsValue(int fromRow, int fromCol, int toRow, int toCol, params string[] values)
-            : this(ExcelCellBase.GetAddress(fromRow, fromCol, toRow, toCol), values) { }
-        public CellsValue(ExcelContext r, int plusRow, int plusCol, params string[] values)
-            : this(ExcelCellBase.GetAddress(r.y, r.x, r.y + plusRow, r.x + plusCol), values) { }
-        public CellsValue(string cells, params string[] values)
+        public CellsValue(int row, int col, object value, bool formula = false)
+            : this(ExcelService.GetAddress(row, col), value, formula) { }
+        public CellsValue(int fromRow, int fromCol, int toRow, int toCol, object value, bool formula = false)
+            : this(ExcelService.GetAddress(fromRow, fromCol, toRow, toCol), value, formula) { }
+        public CellsValue(Address r, object value, bool formula = false)
+            : this(ExcelService.GetAddress(r, 0, 0), value, formula) { }
+        public CellsValue(Address r, int row, int col, object value, bool formula = false)
+            : this(ExcelService.GetAddress(r, row, col), value, formula) { }
+        public CellsValue(Address r, int fromRow, int fromCol, int toRow, int toCol, object value, bool formula = false)
+            : this(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), value, formula) { }
+        public CellsValue(string cells, object value, bool formula = false)
         {
             Cells = cells;
-            Values = values;
+            Value = value.ToString();
+            Formula = formula;
         }
 
         void IExcelCommand.Read(BinaryReader r)
         {
             Cells = r.ReadString();
-            Values = new string[r.ReadUInt16()];
-            for (var i = 0; i < Values.Length; i++)
-                Values[i] = r.ReadString();
+            Value = r.ReadString();
+            Formula = r.ReadBoolean();
         }
 
         void IExcelCommand.Write(BinaryWriter w)
         {
             w.Write(Cells);
-            w.Write((ushort)Values.Length);
-            for (var i = 0; i < Values.Length; i++)
-                w.Write(Values[i]);
+            w.Write(Value);
+            w.Write(Formula);
         }
 
-        void IExcelCommand.Execute(ExcelContext ctx)
-        {
-            var range = ctx.ws.Cells[Cells];
-            range.Value = Values;
-            //foreach (var v in Values)
-            //{
-            //    var y = long.TryParse(v, out var vl) ? vl :
-            //        float.TryParse(v, out var vf) ? (object)vf :
-            //        v;
-            //    range.Value = y;
-            //}
-        }
+        void IExcelCommand.Execute(IExcelContext ctx) => ctx.CellsValue(Cells, ExcelService.ParseValue(Value), Formula);
     }
 }

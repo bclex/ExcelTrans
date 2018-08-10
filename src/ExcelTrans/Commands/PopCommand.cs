@@ -6,12 +6,12 @@ namespace ExcelTrans.Commands
     {
         void IExcelCommand.Read(BinaryReader r) { }
         void IExcelCommand.Write(BinaryWriter w) { }
-        void IExcelCommand.Execute(ExcelContext ctx) => ctx.cmds.Pop();
+        void IExcelCommand.Execute(IExcelContext ctx) => ctx.Cmds.Pop();
 
-        internal static void Reset(ExcelContext ctx, int idx)
+        internal static void Reset(IExcelContext ctx, int idx)
         {
-            while (ctx.cmds.Count > idx)
-                ctx.cmds.Pop();
+            while (ctx.Cmds.Count > idx)
+                ctx.Cmds.Pop();
         }
     }
 }

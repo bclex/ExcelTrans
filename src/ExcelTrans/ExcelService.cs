@@ -1,7 +1,7 @@
 ﻿using ExcelTrans.Commands;
 using ExcelTrans.Services;
+using OfficeOpenXml;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -12,34 +12,31 @@ namespace ExcelTrans
     {
         void Read(BinaryReader r);
         void Write(BinaryWriter w);
-        void Execute(ExcelContext ctx);
+        void Execute(IExcelContext ctx);
     }
 
     public interface IExcelCommandSet
     {
         void Add(Collection<string> s);
-        void Execute(ExcelContext ctx);
+        void Execute(IExcelContext ctx);
     }
 
     public static class ExcelService
     {
-        public static readonly List<Type> cmds = new List<Type>() {
-            typeof(CellsStyle), typeof(CellsValue), typeof(Command), typeof(CommandCol), typeof(CommandRow),
-            typeof(PopCommand), typeof(PopSet), typeof(PushCommand), typeof(PushSet), typeof(WorksheetsAdd) };
         public static readonly string Stream = "^q=";
         public static readonly string Break = "^q!";
-        public static string PopSet => $"{Stream}{ExcelContext.Encode(new PopSet())}";
-        public static string Encode(params IExcelCommand[] cmds) => $"{Stream}{ExcelContext.Encode(cmds)}";
-        public static IExcelCommand[] Decode(string packed) => ExcelContext.Decode(packed.Substring(Stream.Length));
+        public static string PopSet => $"{Stream}{ExcelSerDes.Encode(new PopSet())}";
+        public static string Encode(params IExcelCommand[] cmds) => $"{Stream}{ExcelSerDes.Encode(cmds)}";
+        public static IExcelCommand[] Decode(string packed) => ExcelSerDes.Decode(packed.Substring(Stream.Length));
 
         public static Tuple<Stream, string, string> Transform(Tuple<Stream, string, string> a)
         {
-            using (var s = a.Item1)
+            using (var s1 = a.Item1)
             {
-                s.Seek(0, SeekOrigin.Begin);
-                var sr = new StreamReader(s);
-                var newS = new MemoryStream(Build(sr));
-                return new Tuple<Stream, string, string>(newS, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", a.Item3.Replace(".csv", ".xlsx"));
+                s1.Seek(0, SeekOrigin.Begin);
+                var sr = new StreamReader(s1);
+                var s2 = new MemoryStream(Build(sr));
+                return new Tuple<Stream, string, string>(s2, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", a.Item3.Replace(".csv", ".xlsx"));
             }
         }
 
@@ -50,42 +47,54 @@ namespace ExcelTrans
             {
                 cr.Execute(sr, x =>
                 {
+                    ctx.CsvY++;
                     if (x == null || x.Count == 0) return true;
                     else if (x[0].StartsWith(Stream)) return ctx.Execute(Decode(x[0])) != null;
                     else if (x[0].StartsWith(Break)) return false;
-                    if (ctx.sets.Count == 0) ProcessRow(ctx, x);
-                    else ctx.sets.Peek().Add(x);
+                    if (ctx.Sets.Count == 0) ctx.WriteRow(x);
+                    else ctx.Sets.Peek().Add(x);
                     return true;
                 }).Any(x => !x);
-                return ctx.p.GetAsByteArray();
+                return ctx.P.GetAsByteArray();
             }
         }
 
-        public static bool ProcessRow(ExcelContext ctx, Collection<string> s)
+        public static string GetAddress(int row, int column) => ExcelCellBase.GetAddress(row, column);
+        public static string GetAddress(int row, bool absoluteRow, int column, bool absoluteCol) => ExcelCellBase.GetAddress(row, absoluteRow, column, absoluteCol);
+        public static string GetAddress(int row, int column, bool absolute) => ExcelCellBase.GetAddress(row, column, absolute);
+        public static string GetAddress(int fromRow, int fromColumn, int toRow, int toColumn) => ExcelCellBase.GetAddress(fromRow, fromColumn, toRow, toColumn);
+        public static string GetAddress(int fromRow, int fromColumn, int toRow, int toColumn, bool absolute) => ExcelCellBase.GetAddress(fromRow, fromColumn, toRow, toColumn, absolute);
+        public static string GetAddress(int fromRow, int fromColumn, int toRow, int toColumn, bool fixedFromRow, bool fixedFromColumn, bool fixedToRow, bool fixedToColumn) => ExcelCellBase.GetAddress(fromRow, fromColumn, toRow, toColumn, fixedFromRow, fixedFromColumn, fixedToRow, fixedToColumn);
+        public static string GetAddress(Address r, int row, int col) => $"^{(int)r}:{row}:{col}";
+        public static string GetAddress(Address r, int fromRow, int fromColumn, int toRow, int toColumn) => $"^{(int)r}:{fromRow}:{fromColumn}:{toRow}:{toColumn}";
+        public static string GetAddress(IExcelContext ctx, Address r, int row, int col) => DecodeAddress(ctx, GetAddress(r, row, col));
+        public static string GetAddress(IExcelContext ctx, Address r, int fromRow, int fromColumn, int toRow, int toColumn) => DecodeAddress(ctx, GetAddress(r, fromRow, fromColumn, toRow, toColumn));
+        public static string DecodeAddress(IExcelContext ctx, string address)
         {
-            ctx.EnsureWorksheet();
-            var ws = ctx.ws;
-            // run
-            var cr = ctx.ExecuteRow(s);
-            if ((cr & CommandRtn.Skip) == CommandRtn.Skip)
-                return true;
-            ctx.x = ctx.xstart;
-            for (var i = 0; i < s.Count; i++)
-            {
-                var v = s[i];
-                var y = long.TryParse(v, out var vl) ? vl :
-                    float.TryParse(v, out var vf) ? (object)vf :
-                    v;
-                // run
-                cr = ctx.ExecuteCol(s, v, i);
-                if ((cr & CommandRtn.Skip) == CommandRtn.Skip)
-                    continue;
-                if ((cr & CommandRtn.Formula) != CommandRtn.Formula) ws.SetValue(ctx.y, ctx.x, y);
-                else ws.Cells[ctx.y, ctx.x].Formula = v;
-                ctx.x += ctx.dx;
-            }
-            ctx.y += ctx.dy;
-            return true;
+            if (!address.StartsWith("^")) return address;
+            string r;
+            var vec = address.Substring(1).Split(':').Select(x => int.Parse(x)).ToArray();
+            if (vec.Length == 3)
+                switch ((Address)(vec[0] & 0xF))
+                {
+                    case Address.Cell: r = ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2]); break;
+                    case Address.Range: r = ExcelCellBase.GetAddress(ctx.Y, ctx.X, ctx.Y + vec[1], ctx.X + vec[2]); break;
+                    default: throw new ArgumentOutOfRangeException("address");
+                }
+            else if (vec.Length == 5)
+                switch ((Address)(vec[0] & 0xF))
+                {
+                    case Address.Range: r = ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2], ctx.Y + vec[3], ctx.X + vec[4]); break;
+                    default: throw new ArgumentOutOfRangeException("address");
+                }
+            else throw new ArgumentOutOfRangeException("address");
+            return r;
         }
+
+        public static object ParseValue(string v) =>
+            DateTime.TryParse(v, out var vd) ? vd :
+                long.TryParse(v, out var vl) ? vl :
+                float.TryParse(v, out var vf) ? (object)vf :
+                v;
     }
 }

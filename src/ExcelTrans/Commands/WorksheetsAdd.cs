@@ -21,10 +21,11 @@ namespace ExcelTrans.Commands
             w.Write(Name);
         }
 
-        void IExcelCommand.Execute(ExcelContext ctx)
+        void IExcelCommand.Execute(IExcelContext ctx)
         {
-            ctx.ws = ctx.wb.Worksheets.Add(Name);
-            ctx.xstart = ctx.y = 1;
+            var ctx2 = (ExcelContext)ctx;
+            ctx2.WS = ctx2.WB.Worksheets.Add(Name);
+            ctx.XStart = ctx.Y = 1;
         }
     }
 }

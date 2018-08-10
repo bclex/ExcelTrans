@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ExcelTrans.Services;
+using System;
 using System.IO;
 using System.Linq;
 
@@ -15,19 +16,19 @@ namespace ExcelTrans.Commands
 
         void IExcelCommand.Read(BinaryReader r)
         {
-            Cmds = ExcelContext.DecodeCommands(r);
+            Cmds = ExcelSerDes.DecodeCommands(r);
         }
 
         void IExcelCommand.Write(BinaryWriter w)
         {
-            ExcelContext.EncodeCommands(w, Cmds);
+            ExcelSerDes.EncodeCommands(w, Cmds);
         }
 
-        void IExcelCommand.Execute(ExcelContext ctx)
+        void IExcelCommand.Execute(IExcelContext ctx)
         {
             var rows = Cmds.Select(x => x as CommandRow).Where(x => x != null).ToArray();
             var cols = Cmds.Select(x => x as CommandCol).Where(x => x != null).ToArray();
-            ctx.cmds.Push(new Tuple<CommandRow[], CommandCol[]>(rows, cols));
+            ctx.Cmds.Push(new Tuple<CommandRow[], CommandCol[]>(rows, cols));
         }
     }
 }

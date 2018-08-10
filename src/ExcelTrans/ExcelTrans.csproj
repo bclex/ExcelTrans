@@ -45,10 +45,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\WhenRow.cs" />
     <Compile Include="Commands\CellsValue.cs" />
     <Compile Include="Commands\Command.cs" />
     <Compile Include="Commands\CommandCol.cs" />
     <Compile Include="Commands\CommandRow.cs" />
+    <Compile Include="Commands\Address.cs" />
     <Compile Include="Commands\CommandRtn.cs" />
     <Compile Include="Commands\PopSet.cs" />
     <Compile Include="Commands\PopCommand.cs" />
@@ -56,6 +58,8 @@
     <Compile Include="Commands\PushCommand.cs" />
     <Compile Include="Commands\CellsStyle.cs" />
     <Compile Include="Commands\WorksheetsAdd.cs" />
+    <Compile Include="ExcelExecute.cs" />
+    <Compile Include="Services\ExcelSerDes.cs" />
     <Compile Include="ExcelContext.cs" />
     <Compile Include="ExcelService.cs" />
     <Compile Include="Linq\EnumerableEx+Indexing.cs" />
