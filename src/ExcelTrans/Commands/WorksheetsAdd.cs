@@ -1,14 +1,17 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace ExcelTrans.Commands
 {
     public struct WorksheetsAdd : IExcelCommand
     {
+        public When When { get; private set; }
         public string Name { get; private set; }
 
         public WorksheetsAdd(string name)
         {
-            Name = name;
+            When = When.Normal;
+            Name = name?? throw new ArgumentNullException(nameof(name));
         }
 
         void IExcelCommand.Read(BinaryReader r)

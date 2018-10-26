@@ -16,7 +16,7 @@ namespace ExcelTrans.Services
         public IEnumerable<T> ExecuteOpenXml<T>(Stream stream, Func<Collection<string>, T> action, int width, int row = 0)
         {
             if (stream == null)
-                throw new ArgumentNullException("stream");
+                throw new ArgumentNullException(nameof(stream));
             using (var p = new ExcelPackage(stream))
             {
                 var ws = p.Workbook.Worksheets[1];
@@ -32,7 +32,7 @@ namespace ExcelTrans.Services
         public IEnumerable<T> ExecuteOpenXml<T>(string path, Func<Collection<string>, T> action, int width, int row = 0)
         {
             if (path == null)
-                throw new ArgumentNullException("path");
+                throw new ArgumentNullException(nameof(path));
             var fileInfo = new FileInfo(path);
             using (var p = new ExcelPackage(fileInfo))
             {
@@ -49,7 +49,7 @@ namespace ExcelTrans.Services
         public IEnumerable<T> ExecuteBinary<T>(string path, Func<Collection<string>, T> action, int width, int row = 0)
         {
             if (path == null)
-                throw new ArgumentNullException("path");
+                throw new ArgumentNullException(nameof(path));
             var sheetName = ExcelFileConnection.GetSheetNames(path).FirstOrDefault();
             using (var table = ExcelFileConnection.GetAllRows(path, 2, false, true, sheetName ?? "Sheet1$"))
                 foreach (DataRow r in table.Rows)

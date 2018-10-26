@@ -1,4 +1,4 @@
-﻿using ExcelTrans.Services;
+﻿using ExcelTrans.Utils;
 using System;
 using System.IO;
 using System.Linq;
@@ -7,11 +7,13 @@ namespace ExcelTrans.Commands
 {
     public struct PushCommand : IExcelCommand
     {
+        public When When { get; private set; }
         public IExcelCommand[] Cmds { get; private set; }
 
         public PushCommand(params IExcelCommand[] cmds)
         {
-            Cmds = cmds;
+            When = When.Normal;
+            Cmds = cmds ?? throw new ArgumentNullException(nameof(cmds));
         }
 
         void IExcelCommand.Read(BinaryReader r)

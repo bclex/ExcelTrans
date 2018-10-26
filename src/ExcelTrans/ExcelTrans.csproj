@@ -45,7 +45,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Commands\WhenRow.cs" />
+    <Compile Include="ColumnValueKind.cs" />
+    <Compile Include="Commands\ColumnValue.cs" />
+    <Compile Include="Commands\When.cs" />
     <Compile Include="Commands\CellsValue.cs" />
     <Compile Include="Commands\Command.cs" />
     <Compile Include="Commands\CommandCol.cs" />
@@ -58,8 +60,9 @@
     <Compile Include="Commands\PushCommand.cs" />
     <Compile Include="Commands\CellsStyle.cs" />
     <Compile Include="Commands\WorksheetsAdd.cs" />
-    <Compile Include="ExcelExecute.cs" />
-    <Compile Include="Services\ExcelSerDes.cs" />
+    <Compile Include="CellValueKind.cs" />
+    <Compile Include="ExcelExtensions.cs" />
+    <Compile Include="Utils\ExcelSerDes.cs" />
     <Compile Include="ExcelContext.cs" />
     <Compile Include="ExcelService.cs" />
     <Compile Include="Linq\EnumerableEx+Indexing.cs" />

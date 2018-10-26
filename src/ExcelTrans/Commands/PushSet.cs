@@ -1,4 +1,4 @@
-﻿using ExcelTrans.Services;
+﻿using ExcelTrans.Utils;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -9,6 +9,7 @@ namespace ExcelTrans.Commands
 {
     public class PushSet : IExcelCommand, IExcelCommandSet
     {
+        public When When { get; private set; }
         public int Headers { get; private set; }
         public Func<IExcelContext, IEnumerable<Collection<string>>, IEnumerable<IGrouping<string, Collection<string>>>> Group { get; private set; }
         public Func<IExcelContext, object, IExcelCommand[]> Cmds { get; private set; }
@@ -16,6 +17,9 @@ namespace ExcelTrans.Commands
 
         public PushSet(Func<IExcelContext, IEnumerable<Collection<string>>, IEnumerable<IGrouping<string, Collection<string>>>> group, int headers = 1, Func<IExcelContext, IGrouping<string, Collection<string>>, IExcelCommand[]> cmds = null)
         {
+            if (cmds == null)
+                throw new ArgumentNullException(nameof(cmds));
+            When = When.Normal;
             Headers = headers;
             Group = group;
             Cmds = (z, x) => cmds(z, (IGrouping<string, Collection<string>>)x);
@@ -46,7 +50,7 @@ namespace ExcelTrans.Commands
                 foreach (var g in Group(ctx, _set.Skip(Headers)))
                 {
                     ctx.WriteFirst(null);
-                    var si = ctx.Execute(Cmds(ctx, g));
+                    var si = ctx.Execute(Cmds(ctx, g), out var after);
                     ctx.CsvY = 0;
                     foreach (var v in headers)
                     {
@@ -59,6 +63,7 @@ namespace ExcelTrans.Commands
                         ctx.CsvY++;
                         ctx.WriteRow(v);
                     }
+                    after?.Invoke();
                     ctx.WriteLast(null);
                     ctx.SetCtx(si);
                 }

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
 
-namespace ExcelTrans.Services
+namespace ExcelTrans.Utils
 {
     public class ExcelSerDes
     {

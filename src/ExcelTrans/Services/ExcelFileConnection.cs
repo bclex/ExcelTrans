@@ -69,7 +69,7 @@ namespace ExcelTrans.Services
                     adapter.Fill(table);
             }
             if (table.Columns.Count < minColumns)
-                throw new ArgumentOutOfRangeException("minColumns");
+                throw new ArgumentOutOfRangeException(nameof(minColumns));
             return table;
         }
 

@@ -49,7 +49,7 @@ namespace ExcelTrans.Services
         public IEnumerable<T> Execute<T>(TextReader reader, Func<Collection<string>, T> action)
         {
             if (reader == null)
-                throw new ArgumentNullException("reader");
+                throw new ArgumentNullException(nameof(reader));
             var delimiter = DelimiterAsString[0];
             string line;
             while ((line = reader.ReadLine()) != null)

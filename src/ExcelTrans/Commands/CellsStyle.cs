@@ -1,9 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace ExcelTrans.Commands
 {
     public struct CellsStyle : IExcelCommand
     {
+        public When When { get; private set; }
         public string Cells { get; private set; }
         public string[] Styles { get; private set; }
 
@@ -19,8 +21,11 @@ namespace ExcelTrans.Commands
             : this(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), styles) { }
         public CellsStyle(string cells, params string[] styles)
         {
+            if (string.IsNullOrEmpty(cells))
+                throw new ArgumentNullException(nameof(cells));
+            When = When.Normal;
             Cells = cells;
-            Styles = styles;
+            Styles = styles ?? throw new ArgumentNullException(nameof(styles));
         }
 
         void IExcelCommand.Read(BinaryReader r)

@@ -1,5 +1,6 @@
 ﻿using ExcelTrans.Commands;
 using ExcelTrans.Services;
+using ExcelTrans.Utils;
 using OfficeOpenXml;
 using System;
 using System.Collections.ObjectModel;
@@ -10,6 +11,7 @@ namespace ExcelTrans
 {
     public interface IExcelCommand
     {
+        When When { get; }
         void Read(BinaryReader r);
         void Write(BinaryWriter w);
         void Execute(IExcelContext ctx);
@@ -49,7 +51,7 @@ namespace ExcelTrans
                 {
                     ctx.CsvY++;
                     if (x == null || x.Count == 0) return true;
-                    else if (x[0].StartsWith(Stream)) return ctx.Execute(Decode(x[0])) != null;
+                    else if (x[0].StartsWith(Stream)) { var r = ctx.Execute(Decode(x[0]), out var after) != null; after?.Invoke(); return r; }
                     else if (x[0].StartsWith(Break)) return false;
                     if (ctx.Sets.Count == 0) ctx.WriteRow(x);
                     else ctx.Sets.Peek().Add(x);
@@ -72,29 +74,36 @@ namespace ExcelTrans
         public static string DecodeAddress(IExcelContext ctx, string address)
         {
             if (!address.StartsWith("^")) return address;
-            string r;
             var vec = address.Substring(1).Split(':').Select(x => int.Parse(x)).ToArray();
             if (vec.Length == 3)
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Cell: r = ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2]); break;
-                    case Address.Range: r = ExcelCellBase.GetAddress(ctx.Y, ctx.X, ctx.Y + vec[1], ctx.X + vec[2]); break;
-                    default: throw new ArgumentOutOfRangeException("address");
+                    case Address.Cell: return ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2]);
+                    case Address.Range: return ExcelCellBase.GetAddress(ctx.Y, ctx.X, ctx.Y + vec[1], ctx.X + vec[2]);
+                    default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
             else if (vec.Length == 5)
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Range: r = ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2], ctx.Y + vec[3], ctx.X + vec[4]); break;
-                    default: throw new ArgumentOutOfRangeException("address");
+                    case Address.Range: return ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2], ctx.Y + vec[3], ctx.X + vec[4]);
+                    default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
-            else throw new ArgumentOutOfRangeException("address");
-            return r;
+            else throw new ArgumentOutOfRangeException(nameof(address));
         }
 
-        public static object ParseValue(string v) =>
+        internal static object ParseValue(this string v) =>
+            v == null ? null :
             DateTime.TryParse(v, out var vd) ? vd :
                 long.TryParse(v, out var vl) ? vl :
                 float.TryParse(v, out var vf) ? (object)vf :
                 v;
+        internal static T CastValue<T>(this object v) =>
+            v == null ? default(T) :
+            v is T ? (T)v :
+                typeof(T) == typeof(bool) ? (T)(object)bool.Parse(v.ToString()) :
+                typeof(T) == typeof(float) ? (T)(object)float.Parse(v.ToString()) :
+                typeof(T) == typeof(DateTime) ? (T)(object)DateTime.Parse(v.ToString()) :
+                typeof(T) == typeof(long) ? (T)(object)long.Parse(v.ToString()) :
+                throw new InvalidOperationException();
     }
 }

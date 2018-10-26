@@ -31,11 +31,11 @@ namespace ExcelTrans.Services
         public void Emit<TItem>(CsvEmitContext ctx, TextWriter w, IEnumerable<TItem> set)
         {
             if (ctx == null)
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(ctx));
             if (w == null)
-                throw new ArgumentNullException("w");
+                throw new ArgumentNullException(nameof(w));
             if (set == null)
-                throw new ArgumentNullException("set");
+                throw new ArgumentNullException(nameof(set));
             var itemProperties = GetItemProperties<TItem>((ctx.EmitOptions & CsvEmitOptions.HasHeaderRow) != 0);
             var shouldEncodeValues = (ctx.EmitOptions & CsvEmitOptions.EncodeValues) != 0;
 
