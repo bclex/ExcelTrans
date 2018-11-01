@@ -59,6 +59,7 @@
     <Compile Include="Commands\PushSet.cs" />
     <Compile Include="Commands\PushCommand.cs" />
     <Compile Include="Commands\CellsStyle.cs" />
+    <Compile Include="Commands\WorkbookOpen.cs" />
     <Compile Include="Commands\WorksheetsAdd.cs" />
     <Compile Include="CellValueKind.cs" />
     <Compile Include="ExcelExtensions.cs" />

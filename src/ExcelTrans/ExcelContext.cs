@@ -2,6 +2,7 @@
 using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace ExcelTrans
 {
@@ -42,6 +43,11 @@ namespace ExcelTrans
         public ExcelWorkbook WB;
         public ExcelWorksheet WS;
 
+        public void OpenWorkbook(FileInfo path, string password = null)
+        {
+            P = password == null ? new ExcelPackage(path) : new ExcelPackage(path, password);
+            WB = P.Workbook;
+        }
         public ExcelWorksheet EnsureWorksheet() => WS ?? (WS = WB.Worksheets.Add($"Sheet {WB.Worksheets.Count + 1}"));
 
         public object GetCtx() => new Tuple<int, int>(Cmds.Count, Sets.Count);
