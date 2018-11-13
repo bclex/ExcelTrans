@@ -14,5 +14,7 @@ namespace ExcelTrans.Commands
             while (ctx.Sets.Count > idx)
                 ctx.Sets.Pop().Execute(ctx);
         }
+
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}PopSet"); }
     }
 }

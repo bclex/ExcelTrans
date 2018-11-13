@@ -34,5 +34,7 @@ namespace ExcelTrans.Commands
             var pathFile = new FileInfo(Path);
             ctx2.OpenWorkbook(pathFile, Password);
         }
+
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}WorkbookOpen: {Path}"); }
     }
 }

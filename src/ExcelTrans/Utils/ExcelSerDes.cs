@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
+using System.Text;
 
 namespace ExcelTrans.Utils
 {
@@ -10,8 +11,12 @@ namespace ExcelTrans.Utils
     {
         public static readonly List<object> funcs = new List<object>();
         public static readonly List<Type> cmds = new List<Type>() {
-            typeof(CellsStyle), typeof(CellsValue), typeof(Command), typeof(CommandCol), typeof(CommandRow),
-            typeof(PopCommand), typeof(PopSet), typeof(PushCommand), typeof(PushSet), typeof(WorksheetsAdd) };
+            typeof(CellsStyle), typeof(CellsValue),
+            typeof(ColumnValue),
+            typeof(Command), typeof(CommandCol), typeof(CommandRow),
+            typeof(PopCommand), typeof(PopSet), typeof(PushCommand), typeof(PushSet),
+            typeof(RowValue),
+            typeof(WorkbookOpen), typeof(WorksheetsAdd), typeof(WorksheetsOpen) };
 
         public static string Encode(params IExcelCommand[] cmds)
         {
@@ -23,6 +28,17 @@ namespace ExcelTrans.Utils
                 return Convert.ToBase64String(b.ToArray());
             }
         }
+
+        public static string Describe(string prefix, params IExcelCommand[] cmds)
+        {
+            var b = new StringBuilder();
+            using (var w = new StringWriter(b))
+            {
+                DescribeCommands(w, 0, cmds);
+                return b.ToString();
+            }
+        }
+
         public static IExcelCommand[] Decode(string packed)
         {
             using (var b = new MemoryStream(Convert.FromBase64String(packed)))
@@ -64,6 +80,18 @@ namespace ExcelTrans.Utils
                 cmd.Write(w);
             }
         }
+
+        public static void DescribeCommands(StringWriter w, int pad, IExcelCommand[] cmds)
+        {
+            if (cmds == null)
+                return;
+            pad += 3;
+            foreach (var cmd in cmds)
+            {
+                w.Write(ExcelService.Comment); cmd.Describe(w, pad);
+            }
+        }
+
         public static IExcelCommand[] DecodeCommands(BinaryReader r)
         {
             var cmds = new IExcelCommand[r.ReadUInt16()];

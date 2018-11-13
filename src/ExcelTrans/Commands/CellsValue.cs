@@ -9,6 +9,7 @@ namespace ExcelTrans.Commands
         public string Cells { get; private set; }
         public string Value { get; private set; }
         public CellValueKind ValueKind { get; private set; }
+        public Type ValueType { get; set; }
 
         public CellsValue(int row, int col, object value, CellValueKind valueKind = CellValueKind.Value)
             : this(ExcelService.GetAddress(row, col), value, valueKind) { }
@@ -28,6 +29,7 @@ namespace ExcelTrans.Commands
             Cells = cells;
             Value = value?.ToString();
             ValueKind = valueKind;
+            ValueType = value?.GetType();
         }
 
         void IExcelCommand.Read(BinaryReader r)
@@ -35,6 +37,7 @@ namespace ExcelTrans.Commands
             Cells = r.ReadString();
             Value = r.ReadBoolean() ? r.ReadString() : null;
             ValueKind = (CellValueKind)r.ReadInt32();
+            ValueType = r.ReadBoolean() ? Type.GetType(r.ReadString()) : null;
         }
 
         void IExcelCommand.Write(BinaryWriter w)
@@ -42,8 +45,11 @@ namespace ExcelTrans.Commands
             w.Write(Cells);
             w.Write(Value != null); if (Value != null) w.Write(Value);
             w.Write((int)ValueKind);
+            w.Write(ValueType != null); if (ValueType != null) w.Write(ValueType.ToString());
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.CellsValue(Cells, Value.ParseValue(), ValueKind);
+        void IExcelCommand.Execute(IExcelContext ctx) => ctx.CellsValue(Cells, Value.CastValue(ValueType), ValueKind);
+
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}CellsValue[{ExcelService.DescribeAddress(Cells)}]: {Value}{(ValueKind == CellValueKind.Value ? null : $" - {ValueKind}")}"); }
     }
 }

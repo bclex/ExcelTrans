@@ -60,10 +60,8 @@ namespace ExcelTrans
             return cr;
         }
 
-        public static void WriteFirst(this IExcelContext ctx, Collection<string> s)
-        {
-            ctx.ExecuteRow(When.First, s, out Action after);
-        }
+        public static void WriteRowFirstSet(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.FirstSet, s, out Action after);
+        public static void WriteRowFirst(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.First, s, out Action after);
 
         public static void WriteRow(this IExcelContext ctx, Collection<string> s)
         {
@@ -83,7 +81,7 @@ namespace ExcelTrans
                     continue;
                 if ((cr & CommandRtn.Formula) != CommandRtn.Formula) ws.SetValue(ctx.Y, ctx.X, v);
                 else ws.Cells[ctx.Y, ctx.X].Formula = s[i];
-                if (v is DateTime) ws.Cells[ExcelCellBase.GetAddress(ctx.Y, ctx.X)].Style.Numberformat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
+                //if (v is DateTime) ws.Cells[ExcelCellBase.GetAddress(ctx.Y, ctx.X)].Style.Numberformat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
                 subAfter?.Invoke();
                 ctx.X += ctx.DeltaX;
             }
@@ -93,10 +91,8 @@ namespace ExcelTrans
             ctx.ExecuteRow(When.After, s, out Action after2);
         }
 
-        public static void WriteLast(this IExcelContext ctx, Collection<string> s)
-        {
-            ctx.ExecuteRow(When.Last, s, out Action after);
-        }
+        public static void WriteRowLast(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.Last, s, out Action after);
+        public static void WriteRowLastSet(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.LastSet, s, out Action after);
 
         static Color ToColor(string name)
         {
@@ -114,16 +110,18 @@ namespace ExcelTrans
         public static void CellsStyle(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), styles);
         public static void CellsStyle(this IExcelContext ctx, string cells, string[] styles)
         {
+            string NumberformatPrec(string prec, string defaultPrec) => string.IsNullOrEmpty(prec) ? defaultPrec : $"0.{new String('0', int.Parse(prec))}";
             var range = ((ExcelContext)ctx).WS.Cells[ExcelService.DecodeAddress(ctx, cells)];
             foreach (var style in styles)
             {
                 // number-format
                 if (style.StartsWith("n"))
                 {
+                    // https://support.office.com/en-us/article/number-format-codes-5026bbd6-04bc-48cd-bf33-80f18b4eae68
                     if (style.StartsWith("n:")) range.Style.Numberformat.Format = style.Substring(2);
-                    else if (style == "n$") range.Style.Numberformat.Format = "_(\"$\"* #,##0.00_);_(\"$\"* \\(#,##0.00\\);_(\"$\"* \" - \"??_);_(@_)"; // "_-$* #,##0.00_-;-$* #,##0.00_-;_-$* \"-\"??_-;_-@_-";
-                    else if (style == "n%") range.Style.Numberformat.Format = "0%";
-                    else if (style == "n,") range.Style.Numberformat.Format = "_(* #,##0.00_);_(* \\(#,##0.00\\);_(* \"-\"??_);_(@_)";
+                    else if (style.StartsWith("n$")) range.Style.Numberformat.Format = $"_(\"$\"* #,##{NumberformatPrec(style.Substring(2), "0.00")}_);_(\"$\"* \\(#,##{NumberformatPrec(style.Substring(2), "0.00")}\\);_(\"$\"* \" - \"??_);_(@_)"; // "_-$* #,##{NumberformatPrec(style.Substring(2), "0.00")}_-;-$* #,##{NumberformatPrec(style.Substring(2), "0.00")}_-;_-$* \"-\"??_-;_-@_-";
+                    else if (style.StartsWith("n%")) range.Style.Numberformat.Format = $"{NumberformatPrec(style.Substring(2), "0")}%";
+                    else if (style.StartsWith("n,")) range.Style.Numberformat.Format = $"_(* #,##{NumberformatPrec(style.Substring(2), "0.00")}_);_(* \\(#,##{NumberformatPrec(style.Substring(2), "0.00")}\\);_(* \"-\"??_);_(@_)";
                     else if (style == "nd") range.Style.Numberformat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
                     else throw new InvalidOperationException($"{style} not defined");
                 }
@@ -201,6 +199,9 @@ namespace ExcelTrans
                 case CellValueKind.Comment: range.Comment.Text = (string)value; break;
                 case CellValueKind.CommentMore: break;
                 case CellValueKind.ConditionalFormattingMore: break;
+                case CellValueKind.Copy:
+                    var range2 = ((ExcelContext)ctx).WS.Cells[ExcelService.DecodeAddress(ctx, (string)value)];
+                    range.Copy(range2); break;
                 case CellValueKind.Formula: range.Formula = (string)value; break;
                 case CellValueKind.FormulaR1C1: range.FormulaR1C1 = (string)value; break;
                 case CellValueKind.Hyperlink: range.Hyperlink = new Uri((string)value); break;
@@ -237,6 +238,15 @@ namespace ExcelTrans
             }
         }
 
+        #region Column
+
+        public static void DeleteColumn(this IExcelContext ctx, int column) => ((ExcelContext)ctx).WS.DeleteColumn(column);
+        public static void DeleteColumn(this IExcelContext ctx, int columnFrom, int columns) => ((ExcelContext)ctx).WS.DeleteColumn(columnFrom, columns);
+
+        public static void InsertColumn(this IExcelContext ctx, int columnFrom, int columns) => ((ExcelContext)ctx).WS.InsertColumn(columnFrom, columns);
+        public static void InsertColumn(this IExcelContext ctx, int columnFrom, int columns, int copyStylesFromColumn) => ((ExcelContext)ctx).WS.InsertColumn(columnFrom, columns, copyStylesFromColumn);
+
+        public static void ColumnValue(this IExcelContext ctx, string col, object value, ColumnValueKind valueKind) => ColumnValue(ctx, ExcelService.ColToInt(col), value, valueKind);
         public static void ColumnValue(this IExcelContext ctx, int col, object value, ColumnValueKind valueKind)
         {
             var column = ((ExcelContext)ctx).WS.Column(col);
@@ -251,6 +261,7 @@ namespace ExcelTrans
             }
         }
 
+        public static object GetColumnValue(this IExcelContext ctx, string col, ColumnValueKind valueKind) => GetColumnValue(ctx, ExcelService.ColToInt(col), valueKind);
         public static object GetColumnValue(this IExcelContext ctx, int col, ColumnValueKind valueKind)
         {
             var column = ((ExcelContext)ctx).WS.Column(col);
@@ -286,5 +297,55 @@ namespace ExcelTrans
             }
             column.Width = 0d;
         }
+
+        #endregion
+
+        #region Row
+
+        public static void DeleteRow(this IExcelContext ctx, int row) => ((ExcelContext)ctx).WS.DeleteRow(row);
+        public static void DeleteRow(this IExcelContext ctx, int rowFrom, int rows) => ((ExcelContext)ctx).WS.DeleteRow(rowFrom, rows);
+
+        public static void InsertRow(this IExcelContext ctx, int rowFrom, int rows) => ((ExcelContext)ctx).WS.InsertRow(rowFrom, rows);
+        public static void InsertRow(this IExcelContext ctx, int rowFrom, int rows, int copyStylesFromRow) => ((ExcelContext)ctx).WS.InsertRow(rowFrom, rows, copyStylesFromRow);
+
+        public static void RowValue(this IExcelContext ctx, string row, object value, RowValueKind valueKind) => RowValue(ctx, ExcelService.RowToInt(row), value, valueKind);
+        public static void RowValue(this IExcelContext ctx, int row, object value, RowValueKind valueKind)
+        {
+            var row_ = ((ExcelContext)ctx).WS.Row(row);
+            switch (valueKind)
+            {
+                case RowValueKind.Collapsed: row_.Collapsed = value.CastValue<bool>(); break;
+                case RowValueKind.CustomHeight: row_.CustomHeight = value.CastValue<bool>(); break;
+                case RowValueKind.Height: row_.Height = value.CastValue<double>(); break;
+                case RowValueKind.Hidden: row_.Hidden = value.CastValue<bool>(); break;
+                case RowValueKind.Merged: row_.Merged = value.CastValue<bool>(); break;
+                case RowValueKind.OutlineLevel: row_.OutlineLevel = value.CastValue<int>(); break;
+                case RowValueKind.PageBreak: row_.PageBreak = value.CastValue<bool>(); break;
+                case RowValueKind.Phonetic: row_.Phonetic = value.CastValue<bool>(); break;
+                case RowValueKind.StyleName: row_.StyleName = value.CastValue<string>(); break;
+                default: throw new ArgumentOutOfRangeException(nameof(valueKind));
+            }
+        }
+
+        public static object GetRowValue(this IExcelContext ctx, string row, RowValueKind valueKind) => GetRowValue(ctx, ExcelService.RowToInt(row), valueKind);
+        public static object GetRowValue(this IExcelContext ctx, int row, RowValueKind valueKind)
+        {
+            var row_ = ((ExcelContext)ctx).WS.Row(row);
+            switch (valueKind)
+            {
+                case RowValueKind.Collapsed: return row_.Collapsed;
+                case RowValueKind.CustomHeight: return row_.CustomHeight;
+                case RowValueKind.Height: return row_.Height;
+                case RowValueKind.Hidden: return row_.Hidden;
+                case RowValueKind.Merged: return row_.Merged;
+                case RowValueKind.OutlineLevel: return row_.OutlineLevel;
+                case RowValueKind.PageBreak: return row_.PageBreak;
+                case RowValueKind.Phonetic: return row_.Phonetic;
+                case RowValueKind.StyleName: return row_.StyleName;
+                default: throw new ArgumentOutOfRangeException(nameof(valueKind));
+            }
+        }
+
+        #endregion
     }
 }

@@ -42,14 +42,18 @@ namespace ExcelTrans.Commands
 
         void IExcelCommand.Execute(IExcelContext ctx) => ctx.Sets.Push(this);
 
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}PushSet{(Headers == 1 ? null : $"[{Headers}]")}: {(Group == null ? null : "Group")}"); }
+
         void IExcelCommandSet.Add(Collection<string> s) => _set.Add(s);
+
         void IExcelCommandSet.Execute(IExcelContext ctx)
         {
+            ctx.WriteRowFirstSet(null);
             var headers = _set.Take(Headers).ToArray();
             if (Group != null)
                 foreach (var g in Group(ctx, _set.Skip(Headers)))
                 {
-                    ctx.WriteFirst(null);
+                    ctx.WriteRowFirst(null);
                     var si = ctx.Execute(Cmds(ctx, g), out var after);
                     ctx.CsvY = 0;
                     foreach (var v in headers)
@@ -64,9 +68,10 @@ namespace ExcelTrans.Commands
                         ctx.WriteRow(v);
                     }
                     after?.Invoke();
-                    ctx.WriteLast(null);
+                    ctx.WriteRowLast(null);
                     ctx.SetCtx(si);
                 }
+            ctx.WriteRowLastSet(null);
         }
     }
 }

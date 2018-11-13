@@ -14,5 +14,7 @@ namespace ExcelTrans.Commands
             while (ctx.Cmds.Count > idx)
                 ctx.Cmds.Pop();
         }
+
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}PopCommand"); }
     }
 }

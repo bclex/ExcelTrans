@@ -6,9 +6,11 @@ namespace ExcelTrans.Commands
     public enum When : byte
     {
         Normal = 0,
-        First = 1,
-        Before = 2,
-        After = 4,
-        Last = 8,
+        FirstSet = 1,
+        First = 2,
+        Before = 4,
+        After = 8,
+        Last = 16,
+        LastSet = 32,
     }
 }

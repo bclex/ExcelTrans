@@ -9,6 +9,7 @@
         Comment,
         CommentMore,
         ConditionalFormattingMore,
+        Copy,
         Formula,
         FormulaR1C1,
         Hyperlink,

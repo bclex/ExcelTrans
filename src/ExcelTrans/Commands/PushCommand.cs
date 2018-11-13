@@ -32,5 +32,7 @@ namespace ExcelTrans.Commands
             var cols = Cmds.Select(x => x as CommandCol).Where(x => x != null).ToArray();
             ctx.Cmds.Push(new Tuple<CommandRow[], CommandCol[]>(rows, cols));
         }
+
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}PushCommand:"); ExcelSerDes.DescribeCommands(w, pad, Cmds); }
     }
 }

@@ -33,5 +33,7 @@ namespace ExcelTrans.Commands
         }
 
         void IExcelCommand.Execute(IExcelContext ctx) => Action(ctx);
+
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}Command{(When == When.Normal ? null : $"[{When}]")}: [action]"); }
     }
 }
