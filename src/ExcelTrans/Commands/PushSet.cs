@@ -42,7 +42,18 @@ namespace ExcelTrans.Commands
 
         void IExcelCommand.Execute(IExcelContext ctx) => ctx.Sets.Push(this);
 
-        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}PushSet{(Headers == 1 ? null : $"[{Headers}]")}: {(Group == null ? null : "Group")}"); }
+        void IExcelCommand.Describe(StringWriter w, int pad)
+        {
+            w.WriteLine($"{new string(' ', pad)}PushSet{(Headers == 1 ? null : $"[{Headers}]")}: {(Group != null ? "[group func]" : null)}");
+            if (Group != null)
+            {
+                var fakeCtx = new ExcelContext();
+                var fakeSet = new[] { new Collection<string> { "Fake" } };
+                var fakeObj = fakeSet.GroupBy(y => y[0]).FirstOrDefault();
+                var cmds = Cmds(fakeCtx, fakeObj);
+                ExcelSerDes.DescribeCommands(w, pad, cmds);
+            }
+        }
 
         void IExcelCommandSet.Add(Collection<string> s) => _set.Add(s);
 
