@@ -148,7 +148,11 @@ namespace ExcelTrans
                 // fill
                 else if (style.StartsWith("l"))
                 {
-                    if (style.StartsWith("lc:")) range.Style.Fill.BackgroundColor.SetColor(ToColor(style.Substring(3)));
+                    if (style.StartsWith("lc:"))
+                    {
+                        if (range.Style.Fill.PatternType == ExcelFillStyle.None) range.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        range.Style.Fill.BackgroundColor.SetColor(ToColor(style.Substring(3)));
+                    }
                     else if (style.StartsWith("lf")) range.Style.Fill.PatternType = (ExcelFillStyle)int.Parse(style.Substring(2));
                 }
                 // border
