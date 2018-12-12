@@ -65,6 +65,8 @@ namespace ExcelTrans
             }
         }
 
+        public static string GetAddressCol(int column) => ExcelCellBase.GetAddressCol(column);
+        public static string GetAddressRow(int row) => ExcelCellBase.GetAddressRow(row);
         public static string GetAddress(int row, string column) => ExcelCellBase.GetAddress(row, ColToInt(column));
         public static string GetAddress(int row, int column) => ExcelCellBase.GetAddress(row, column);
         public static string GetAddress(int row, bool absoluteRow, string column, bool absoluteCol) => ExcelCellBase.GetAddress(row, absoluteRow, ColToInt(column), absoluteCol);
