@@ -96,6 +96,7 @@ namespace ExcelTrans
                 {
                     case Address.Cell: return ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2]);
                     case Address.Range: return ExcelCellBase.GetAddress(ctx.Y, ctx.X, ctx.Y + vec[1], ctx.X + vec[2]);
+                    case Address.ColOrRow: return vec[1] != 0 ? ExcelCellBase.GetAddressCol(vec[1]) : ExcelCellBase.GetAddressRow(vec[2]);
                     default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
             else if (vec.Length == 5)

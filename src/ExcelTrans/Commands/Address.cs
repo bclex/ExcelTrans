@@ -7,6 +7,7 @@ namespace ExcelTrans.Commands
     {
         Cell = 1,
         Range = 2,
+        ColOrRow = 3,
         // Flags
         IncX = 0x10,
         IncY = 0x20,
