@@ -7,12 +7,15 @@ namespace ExcelTrans.Commands
     {
         Cell = 1,
         Range = 2,
-        ColOrRow = 3,
+        RowOrCol = 3,
+        ColToCol = 4,
+        RowToRow = 5,
         // Flags
-        IncX = 0x10,
-        IncY = 0x20,
-        //
-        CellX1 = Cell | IncX,
-        CellY1 = Cell | IncY,
+        Rel = 0x10,
+        //IncX = 0x20,
+        //IncY = 0x40,
+        // Mixture
+        CellR = Cell | Rel,
+        RangeR = Range | Rel,
     }
 }

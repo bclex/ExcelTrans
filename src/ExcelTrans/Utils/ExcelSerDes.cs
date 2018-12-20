@@ -14,8 +14,10 @@ namespace ExcelTrans.Utils
             typeof(CellsStyle), typeof(CellsValue),
             typeof(ColumnValue),
             typeof(Command), typeof(CommandCol), typeof(CommandRow),
+            typeof(ConditionalFormatting),
             typeof(PopCommand), typeof(PopSet), typeof(PushCommand), typeof(PushSet),
             typeof(RowValue),
+            typeof(ViewAction),
             typeof(WorkbookOpen), typeof(WorksheetsAdd), typeof(WorksheetsOpen) };
 
         public static string Encode(params IExcelCommand[] cmds)

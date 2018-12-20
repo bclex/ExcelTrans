@@ -1,6 +1,11 @@
 ﻿using ExcelTrans.Commands;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
+using OfficeOpenXml.ConditionalFormatting;
+using OfficeOpenXml.ConditionalFormatting.Contracts;
 using OfficeOpenXml.Style;
+using OfficeOpenXml.Style.Dxf;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -94,12 +99,253 @@ namespace ExcelTrans
         public static void WriteRowLast(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.Last, s, out Action after);
         public static void WriteRowLastSet(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.LastSet, s, out Action after);
 
-        static Color ToColor(string name)
+        static T ToStaticEnum<T>(string name, T defaultValue = default(T))
         {
-            var propMethod = typeof(Color).GetProperty(name, BindingFlags.Public | BindingFlags.Static);
+            if (string.IsNullOrEmpty(name)) return defaultValue;
+            var propMethod = typeof(T).GetProperty(name, BindingFlags.Public | BindingFlags.Static);
             if (propMethod == null)
-                throw new ArgumentNullException(nameof(name), $"Unable to find color {name}");
-            return (Color)propMethod.GetValue(null);
+                throw new ArgumentNullException(nameof(name), $"Unable to find {name}");
+            return (T)propMethod.GetValue(null);
+        }
+
+        static Color ToColor(string name, Color defaultValue = default(Color))
+        {
+            if (string.IsNullOrEmpty(name)) return defaultValue;
+            if (name.StartsWith("#")) return ColorTranslator.FromHtml(name);
+            return ToStaticEnum<Color>(name);
+        }
+
+        static T ToEnum<T>(string name, T defaultValue = default(T)) => !string.IsNullOrEmpty(name) ? (T)Enum.Parse(typeof(T), name) : defaultValue;
+
+        static string NumberformatPrec(string prec, string defaultPrec) => string.IsNullOrEmpty(prec) ? defaultPrec : $"0.{new string('0', int.Parse(prec))}";
+
+        public static void ViewAction(this IExcelContext ctx, object value, ViewActionKind actionKind)
+        {
+            var view = ((ExcelContext)ctx).WS.View;
+            switch (actionKind)
+            {
+                case ViewActionKind.FreezePane: var val = (Tuple<int, int>)value; view.FreezePanes(val.Item1, val.Item2); break;
+                case ViewActionKind.SetTabSelected: view.SetTabSelected(); break;
+                case ViewActionKind.UnfreezePane: view.UnFreezePanes(); break;
+                default: throw new ArgumentOutOfRangeException(nameof(actionKind));
+            }
+        }
+
+        public static void ConditionalFormatting(this IExcelContext ctx, int row, int col, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(row, col), styles);
+        public static void ConditionalFormatting(this IExcelContext ctx, int fromRow, int fromCol, int toRow, int toCol, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(fromRow, fromCol, toRow, toCol), styles);
+        public static void ConditionalFormatting(this IExcelContext ctx, Address r, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, 0, 0), styles);
+        public static void ConditionalFormatting(this IExcelContext ctx, Address r, int row, int col, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, row, col), styles);
+        public static void ConditionalFormatting(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), styles);
+        public static void ConditionalFormatting(this IExcelContext ctx, string address, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, string[] styles)
+        {
+            void toColorScale(ExcelConditionalFormattingColorScaleValue val, JToken t)
+            {
+                if (t == null) return;
+                val.Type = ToEnum<eExcelConditionalFormattingValueObjectType>((string)t["type"]);
+                val.Color = ToColor((string)t["color"], Color.White);
+                val.Value = t["value"].CastValue<double>();
+                val.Formula = (string)t["formula"];
+            }
+            void toIconDataBar(ExcelConditionalFormattingIconDataBarValue val, JToken t)
+            {
+                if (t == null) return;
+                val.Type = ToEnum<eExcelConditionalFormattingValueObjectType>((string)t["type"]);
+                val.GreaterThanOrEqualTo = t["gte"].CastValue<bool>();
+                val.Value = t["value"].CastValue<double>();
+                val.Formula = (string)t["formula"];
+            }
+
+            var token = value != null ? JToken.Parse(value is string ? (string)value : JsonConvert.SerializeObject(value)) : null;
+            var formatting = ((ExcelContext)ctx).WS.ConditionalFormatting;
+            var ruleAddress = new ExcelAddress(ctx.DecodeAddress(address));
+            IExcelConditionalFormattingWithStdDev stdDev = null;
+            IExcelConditionalFormattingWithText text = null;
+            IExcelConditionalFormattingWithFormula formula = null;
+            IExcelConditionalFormattingWithFormula2 formula2 = null;
+            IExcelConditionalFormattingWithRank rank = null;
+            IExcelConditionalFormattingRule rule;
+            switch (formattingKind)
+            {
+                case ConditionalFormattingKind.AboveAverage: rule = formatting.AddAboveAverage(ruleAddress); break;
+                case ConditionalFormattingKind.AboveOrEqualAverage: rule = formatting.AddAboveOrEqualAverage(ruleAddress); break;
+                case ConditionalFormattingKind.AboveStdDev: rule = formatting.AddAboveStdDev(ruleAddress); stdDev = (IExcelConditionalFormattingWithStdDev)rule; break;
+                case ConditionalFormattingKind.BeginsWith: rule = formatting.AddBeginsWith(ruleAddress); text = (IExcelConditionalFormattingWithText)rule; break;
+                case ConditionalFormattingKind.BelowAverage: rule = formatting.AddBelowAverage(ruleAddress); break;
+                case ConditionalFormattingKind.BelowOrEqualAverage: rule = formatting.AddBelowOrEqualAverage(ruleAddress); break;
+                case ConditionalFormattingKind.BelowStdDev: rule = formatting.AddBelowStdDev(ruleAddress); stdDev = (IExcelConditionalFormattingWithStdDev)rule; break;
+                case ConditionalFormattingKind.Between: rule = formatting.AddBetween(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; formula2 = (IExcelConditionalFormattingWithFormula2)rule; break;
+                case ConditionalFormattingKind.Bottom: rule = formatting.AddBottom(ruleAddress); rank = (IExcelConditionalFormattingWithRank)rule; break;
+                case ConditionalFormattingKind.BottomPercent: rule = formatting.AddBottomPercent(ruleAddress); rank = (IExcelConditionalFormattingWithRank)rule; break;
+                case ConditionalFormattingKind.ContainsBlanks: rule = formatting.AddContainsBlanks(ruleAddress); break;
+                case ConditionalFormattingKind.ContainsErrors: rule = formatting.AddContainsErrors(ruleAddress); break;
+                case ConditionalFormattingKind.ContainsText: rule = formatting.AddContainsText(ruleAddress); text = (IExcelConditionalFormattingWithText)rule; break;
+                case ConditionalFormattingKind.Databar:
+                    {
+                        var r = formatting.AddDatabar(ruleAddress, ToStaticEnum<Color>((string)token["color"])); rule = r;
+                        r.ShowValue = token["showValue"].CastValue<bool>();
+                        toIconDataBar(r.LowValue, token["low"]);
+                        toIconDataBar(r.HighValue, token["high"]);
+                    }
+                    break;
+                case ConditionalFormattingKind.DuplicateValues: rule = formatting.AddDuplicateValues(ruleAddress); break;
+                case ConditionalFormattingKind.EndsWith: rule = formatting.AddEndsWith(ruleAddress); text = (IExcelConditionalFormattingWithText)rule; break;
+                case ConditionalFormattingKind.Equal: rule = formatting.AddEqual(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; break;
+                case ConditionalFormattingKind.Expression: rule = formatting.AddExpression(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; break;
+                case ConditionalFormattingKind.FiveIconSet:
+                    {
+                        var r = formatting.AddFiveIconSet(ruleAddress, eExcelconditionalFormatting5IconsSetType.Arrows); rule = r;
+                        r.Reverse = token["reverse"].CastValue<bool>();
+                        r.ShowValue = token["showValue"].CastValue<bool>();
+                        toIconDataBar(r.Icon1, token["icon1"]);
+                        toIconDataBar(r.Icon2, token["icon2"]);
+                        toIconDataBar(r.Icon3, token["icon3"]);
+                        toIconDataBar(r.Icon4, token["icon4"]);
+                        toIconDataBar(r.Icon5, token["icon5"]);
+                    }
+                    break;
+                case ConditionalFormattingKind.FourIconSet:
+                    {
+                        var r = formatting.AddFourIconSet(ruleAddress, eExcelconditionalFormatting4IconsSetType.Arrows); rule = r;
+                        r.Reverse = token["reverse"].CastValue<bool>();
+                        r.ShowValue = token["showValue"].CastValue<bool>();
+                        toIconDataBar(r.Icon1, token["icon1"]);
+                        toIconDataBar(r.Icon2, token["icon2"]);
+                        toIconDataBar(r.Icon3, token["icon3"]);
+                        toIconDataBar(r.Icon4, token["icon4"]);
+                    }
+                    break;
+                case ConditionalFormattingKind.GreaterThan: rule = formatting.AddGreaterThan(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; break;
+                case ConditionalFormattingKind.GreaterThanOrEqual: rule = formatting.AddGreaterThanOrEqual(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; break;
+                case ConditionalFormattingKind.Last7Days: rule = formatting.AddLast7Days(ruleAddress); break;
+                case ConditionalFormattingKind.LastMonth: rule = formatting.AddLastMonth(ruleAddress); break;
+                case ConditionalFormattingKind.LastWeek: rule = formatting.AddLastWeek(ruleAddress); break;
+                case ConditionalFormattingKind.LessThan: rule = formatting.AddLessThan(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; break;
+                case ConditionalFormattingKind.LessThanOrEqual: rule = formatting.AddLessThanOrEqual(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; break;
+                case ConditionalFormattingKind.NextMonth: rule = formatting.AddNextMonth(ruleAddress); break;
+                case ConditionalFormattingKind.NextWeek: rule = formatting.AddNextWeek(ruleAddress); break;
+                case ConditionalFormattingKind.NotBetween: rule = formatting.AddNotBetween(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; formula2 = (IExcelConditionalFormattingWithFormula2)rule; break;
+                case ConditionalFormattingKind.NotContainsBlanks: rule = formatting.AddNotContainsBlanks(ruleAddress); break;
+                case ConditionalFormattingKind.NotContainsErrors: rule = formatting.AddNotContainsErrors(ruleAddress); break;
+                case ConditionalFormattingKind.NotContainsText: rule = formatting.AddNotContainsText(ruleAddress); text = (IExcelConditionalFormattingWithText)rule; break;
+                case ConditionalFormattingKind.NotEqual: rule = formatting.AddNotEqual(ruleAddress); formula = (IExcelConditionalFormattingWithFormula)rule; break;
+                case ConditionalFormattingKind.ThisMonth: rule = formatting.AddThisMonth(ruleAddress); break;
+                case ConditionalFormattingKind.ThisWeek: rule = formatting.AddThisWeek(ruleAddress); break;
+                case ConditionalFormattingKind.ThreeColorScale:
+                    {
+                        var r = formatting.AddThreeColorScale(ruleAddress); rule = r;
+                        toColorScale(r.LowValue, token["low"]);
+                        toColorScale(r.HighValue, token["high"]);
+                        toColorScale(r.MiddleValue, token["middle"]);
+                    }
+                    break;
+                case ConditionalFormattingKind.ThreeIconSet:
+                    {
+                        var r = formatting.AddThreeIconSet(ruleAddress, eExcelconditionalFormatting3IconsSetType.Arrows); rule = r;
+                        r.Reverse = token["reverse"].CastValue<bool>();
+                        r.ShowValue = token["showValue"].CastValue<bool>();
+                        toIconDataBar(r.Icon1, token["icon1"]);
+                        toIconDataBar(r.Icon2, token["icon2"]);
+                        toIconDataBar(r.Icon3, token["icon3"]);
+                    }
+                    break;
+                case ConditionalFormattingKind.Today: rule = formatting.AddToday(ruleAddress); break;
+                case ConditionalFormattingKind.Tomorrow: rule = formatting.AddTomorrow(ruleAddress); break;
+                case ConditionalFormattingKind.Top: rule = formatting.AddTop(ruleAddress); rank = (IExcelConditionalFormattingWithRank)rule; break;
+                case ConditionalFormattingKind.TopPercent: rule = formatting.AddTopPercent(ruleAddress); rank = (IExcelConditionalFormattingWithRank)rule; break;
+                case ConditionalFormattingKind.TwoColorScale:
+                    {
+                        var r = formatting.AddTwoColorScale(ruleAddress); rule = r;
+                        toColorScale(r.LowValue, token["low"]);
+                        toColorScale(r.HighValue, token["high"]);
+                    }
+                    break;
+                case ConditionalFormattingKind.UniqueValues: rule = formatting.AddUniqueValues(ruleAddress); break;
+                case ConditionalFormattingKind.Yesterday: rule = formatting.AddYesterday(ruleAddress); break;
+                default: throw new ArgumentOutOfRangeException(nameof(formattingKind));
+            }
+            // CUSTOM
+            if (stdDev != null) stdDev.StdDev = token["stdDev"].CastValue<ushort>();
+            if (text != null) text.Text = (string)token["text"];
+            if (formula != null) formula.Formula = (string)token["formula"];
+            if (formula2 != null) formula2.Formula2 = (string)token["formula2"];
+            if (rank != null) rank.Rank = token["rank"].CastValue<ushort>();
+            // RULE
+            if (priority != null) rule.Priority = priority.Value;
+            rule.StopIfTrue = stopIfTrue;
+            if (styles != null)
+                foreach (var style in styles)
+                {
+                    // number-format
+                    if (style.StartsWith("n"))
+                    {
+                        // https://support.office.com/en-us/article/number-format-codes-5026bbd6-04bc-48cd-bf33-80f18b4eae68
+                        if (style.StartsWith("n:")) rule.Style.NumberFormat.Format = style.Substring(2);
+                        else if (style.StartsWith("n$")) rule.Style.NumberFormat.Format = $"_(\"$\"* #,##{NumberformatPrec(style.Substring(2), "0.00")}_);_(\"$\"* \\(#,##{NumberformatPrec(style.Substring(2), "0.00")}\\);_(\"$\"* \" - \"??_);_(@_)"; // "_-$* #,##{NumberformatPrec(style.Substring(2), "0.00")}_-;-$* #,##{NumberformatPrec(style.Substring(2), "0.00")}_-;_-$* \"-\"??_-;_-@_-";
+                        else if (style.StartsWith("n%")) rule.Style.NumberFormat.Format = $"{NumberformatPrec(style.Substring(2), "0")}%";
+                        else if (style.StartsWith("n,")) rule.Style.NumberFormat.Format = $"_(* #,##{NumberformatPrec(style.Substring(2), "0.00")}_);_(* \\(#,##{NumberformatPrec(style.Substring(2), "0.00")}\\);_(* \"-\"??_);_(@_)";
+                        else if (style == "nd") rule.Style.NumberFormat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
+                        else throw new InvalidOperationException($"{style} not defined");
+                    }
+                    // font
+                    else if (style.StartsWith("f"))
+                    {
+                        //if (style.StartsWith("f:")) rule.Style.Font.Name = style.Substring(2);
+                        //else if (style.StartsWith("fx")) rule.Style.Font.Size = float.Parse(style.Substring(2));
+                        //else if (style.StartsWith("ff")) rule.Style.Font.Family = int.Parse(style.Substring(2));
+                        //else if (style.StartsWith("fc:")) rule.Style.Font.Color = ToDxfColor(style.Substring(3));
+                        //else if (style.StartsWith("fs:")) rule.Style.Font.Scheme = style.Substring(2);
+                        if (style == "fB") rule.Style.Font.Bold = true;
+                        else if (style == "fb") rule.Style.Font.Bold = false;
+                        else if (style == "fI") rule.Style.Font.Italic = true;
+                        else if (style == "fi") rule.Style.Font.Italic = false;
+                        else if (style == "fS") rule.Style.Font.Strike = true;
+                        else if (style == "fs") rule.Style.Font.Strike = false;
+                        else if (style == "f_") rule.Style.Font.Underline = ExcelUnderLineType.Single;
+                        else if (style == "f!_") rule.Style.Font.Underline = ExcelUnderLineType.None;
+                        //else if (style == "") rule.Style.Font.UnderLineType = ?;
+                        //else if (style.StartsWith("fv")) rule.Style.Font.VerticalAlign = (ExcelVerticalAlignmentFont)int.Parse(style.Substring(2));
+                        else throw new InvalidOperationException($"{style} not defined");
+                    }
+                    // fill
+                    else if (style.StartsWith("l"))
+                    {
+                        if (style.StartsWith("lc:"))
+                        {
+                            if (rule.Style.Fill.PatternType == ExcelFillStyle.None) rule.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                            rule.Style.Fill.BackgroundColor.Color = ToColor(style.Substring(3));
+                        }
+                        else if (style.StartsWith("lf")) rule.Style.Fill.PatternType = (ExcelFillStyle)int.Parse(style.Substring(2));
+                    }
+                    // border
+                    else if (style.StartsWith("b"))
+                    {
+                        if (style.StartsWith("bl")) rule.Style.Border.Left.Style = (ExcelBorderStyle)int.Parse(style.Substring(2));
+                        else if (style.StartsWith("br")) rule.Style.Border.Right.Style = (ExcelBorderStyle)int.Parse(style.Substring(2));
+                        else if (style.StartsWith("bt")) rule.Style.Border.Top.Style = (ExcelBorderStyle)int.Parse(style.Substring(2));
+                        else if (style.StartsWith("bb")) rule.Style.Border.Bottom.Style = (ExcelBorderStyle)int.Parse(style.Substring(2));
+                        //else if (style.StartsWith("bd")) rule.Style.Border.Diagonal.Style = (ExcelBorderStyle)int.Parse(style.Substring(2));
+                        //else if (style == "bdU") rule.Style.Border.DiagonalUp = true;
+                        //else if (style == "bdu") rule.Style.Border.DiagonalUp = false;
+                        //else if (style == "bdD") rule.Style.Border.DiagonalDown = true;
+                        //else if (style == "bdd") rule.Style.Border.DiagonalDown = false;
+                        //else if (style.StartsWith("ba")) rule.Style.Border.BorderAround((ExcelBorderStyle)int.Parse(style.Substring(2))); // add color option
+                        else throw new InvalidOperationException($"{style} not defined");
+                    }
+                    // horizontal-alignment
+                    //else if (style.StartsWith("ha"))
+                    //{
+                    //    rule.Style.HorizontalAlignment = (ExcelHorizontalAlignment)int.Parse(style.Substring(2));
+                    //}
+                    // vertical-alignment
+                    //else if (style.StartsWith("va"))
+                    //{
+                    //    rule.Style.VerticalAlignment = (ExcelVerticalAlignment)int.Parse(style.Substring(2));
+                    //}
+                    // vertical-alignment
+                    //else if (style.StartsWith("W")) rule.Style.WrapText = true;
+                    //else if (style.StartsWith("w")) rule.Style.WrapText = false;
+                    else throw new InvalidOperationException($"{style} not defined");
+                }
         }
 
         // https://stackoverflow.com/questions/40209636/epplus-number-format/40214134
@@ -110,8 +356,7 @@ namespace ExcelTrans
         public static void CellsStyle(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), styles);
         public static void CellsStyle(this IExcelContext ctx, string cells, string[] styles)
         {
-            string NumberformatPrec(string prec, string defaultPrec) => string.IsNullOrEmpty(prec) ? defaultPrec : $"0.{new String('0', int.Parse(prec))}";
-            var range = ((ExcelContext)ctx).WS.Cells[ExcelService.DecodeAddress(ctx, cells)];
+            var range = ((ExcelContext)ctx).WS.Cells[ctx.DecodeAddress(cells)];
             foreach (var style in styles)
             {
                 // number-format
@@ -194,7 +439,7 @@ namespace ExcelTrans
         public static void CellsValue(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, object value, CellValueKind valueKind = CellValueKind.Value) => ctx.CellsValue(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), value, valueKind);
         public static void CellsValue(this IExcelContext ctx, string cells, object value, CellValueKind valueKind = CellValueKind.Value)
         {
-            var range = ((ExcelContext)ctx).WS.Cells[ExcelService.DecodeAddress(ctx, cells)];
+            var range = ((ExcelContext)ctx).WS.Cells[ctx.DecodeAddress(cells)];
             switch (valueKind)
             {
                 case CellValueKind.Value: range.Value = value; break;
@@ -204,7 +449,7 @@ namespace ExcelTrans
                 case CellValueKind.CommentMore: break;
                 case CellValueKind.ConditionalFormattingMore: break;
                 case CellValueKind.Copy:
-                    var range2 = ((ExcelContext)ctx).WS.Cells[ExcelService.DecodeAddress(ctx, (string)value)];
+                    var range2 = ((ExcelContext)ctx).WS.Cells[ctx.DecodeAddress((string)value)];
                     range.Copy(range2); break;
                 case CellValueKind.Formula: range.Formula = (string)value; break;
                 case CellValueKind.FormulaR1C1: range.FormulaR1C1 = (string)value; break;
@@ -225,7 +470,7 @@ namespace ExcelTrans
         public static object GetCellsValue(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, CellValueKind valueKind = CellValueKind.Value) => ctx.GetCellsValue(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), valueKind);
         public static object GetCellsValue(this IExcelContext ctx, string cells, CellValueKind valueKind = CellValueKind.Value)
         {
-            var range = ((ExcelContext)ctx).WS.Cells[ExcelService.DecodeAddress(ctx, cells)];
+            var range = ((ExcelContext)ctx).WS.Cells[ctx.DecodeAddress(cells)];
             switch (valueKind)
             {
                 case CellValueKind.Value: return range.Value;

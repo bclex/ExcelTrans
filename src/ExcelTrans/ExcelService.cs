@@ -83,45 +83,64 @@ namespace ExcelTrans
         public static string GetAddress(Address r, int row, int col) => $"^{(int)r}:{row}:{col}";
         public static string GetAddress(Address r, int fromRow, string fromColumn, int toRow, string toColumn) => $"^{(int)r}:{fromRow}:{ColToInt(fromColumn)}:{toRow}:{ColToInt(toColumn)}";
         public static string GetAddress(Address r, int fromRow, int fromColumn, int toRow, int toColumn) => $"^{(int)r}:{fromRow}:{fromColumn}:{toRow}:{toColumn}";
-        public static string GetAddress(IExcelContext ctx, Address r, int row, string col) => DecodeAddress(ctx, GetAddress(r, row, col));
-        public static string GetAddress(IExcelContext ctx, Address r, int row, int col) => DecodeAddress(ctx, GetAddress(r, row, col));
-        public static string GetAddress(IExcelContext ctx, Address r, int fromRow, string fromColumn, int toRow, string toColumn) => DecodeAddress(ctx, GetAddress(r, fromRow, fromColumn, toRow, toColumn));
-        public static string GetAddress(IExcelContext ctx, Address r, int fromRow, int fromColumn, int toRow, int toColumn) => DecodeAddress(ctx, GetAddress(r, fromRow, fromColumn, toRow, toColumn));
-        public static string DecodeAddress(IExcelContext ctx, string address)
+        public static string GetAddress(this IExcelContext ctx, Address r, int row, string col) => DecodeAddress(ctx, GetAddress(r, row, col));
+        public static string GetAddress(this IExcelContext ctx, Address r, int row, int col) => DecodeAddress(ctx, GetAddress(r, row, col));
+        public static string GetAddress(this IExcelContext ctx, Address r, int fromRow, string fromColumn, int toRow, string toColumn) => DecodeAddress(ctx, GetAddress(r, fromRow, fromColumn, toRow, toColumn));
+        public static string GetAddress(this IExcelContext ctx, Address r, int fromRow, int fromColumn, int toRow, int toColumn) => DecodeAddress(ctx, GetAddress(r, fromRow, fromColumn, toRow, toColumn));
+        public static string DecodeAddress(this IExcelContext ctx, string address)
         {
             if (!address.StartsWith("^")) return address;
             var vec = address.Substring(1).Split(':').Select(x => int.Parse(x)).ToArray();
+            var rel = (vec[0] & (int)Address.Rel) == (int)Address.Rel;
             if (vec.Length == 3)
+            {
+                int row = rel ? ctx.Y + vec[1] : vec[1],
+                    col = rel ? ctx.X + vec[2] : vec[2],
+                    coltocol1 = rel ? ctx.X + vec[1] : vec[1],
+                    coltocol2 = rel ? ctx.X + vec[2] : vec[2],
+                    rowtorow1 = rel ? ctx.Y + vec[1] : vec[1],
+                    rowtorow2 = rel ? ctx.Y + vec[2] : vec[2];
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Cell: return ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2]);
-                    case Address.Range: return ExcelCellBase.GetAddress(ctx.Y, ctx.X, ctx.Y + vec[1], ctx.X + vec[2]);
-                    case Address.ColOrRow: return vec[1] != 0 ? ExcelCellBase.GetAddressCol(vec[1]) : ExcelCellBase.GetAddressRow(vec[2]);
+                    case Address.Cell: return ExcelCellBase.GetAddress(row, col);
+                    case Address.Range: return ExcelCellBase.GetAddress(ctx.Y, ctx.X, row, col);
+                    case Address.RowOrCol: return vec[1] != 0 ? ExcelCellBase.GetAddressRow(row) : ExcelCellBase.GetAddressCol(col);
+                    case Address.ColToCol: return $"{ExcelCellBase.GetAddressCol(coltocol1).Split(':')[0]}:{ExcelCellBase.GetAddressCol(coltocol2).Split(':')[0]}";
+                    case Address.RowToRow: return $"{rowtorow1}:{rowtorow2}";
                     default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
+            }
             else if (vec.Length == 5)
+            {
+                int fromRow = rel ? ctx.Y + vec[1] : vec[1], toRow = rel ? ctx.Y + vec[3] : vec[3],
+                    fromCol = rel ? ctx.X + vec[2] : vec[2], toCol = rel ? ctx.X + vec[4] : vec[4];
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Range: return ExcelCellBase.GetAddress(ctx.Y + vec[1], ctx.X + vec[2], ctx.Y + vec[3], ctx.X + vec[4]);
+                    case Address.Range: return ExcelCellBase.GetAddress(fromRow, fromCol, toRow, toCol);
                     default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
+            }
             else throw new ArgumentOutOfRangeException(nameof(address));
         }
         internal static string DescribeAddress(string address)
         {
             if (!address.StartsWith("^")) return address;
             var vec = address.Substring(1).Split(':').Select(x => int.Parse(x)).ToArray();
+            var rel = (vec[0] & (int)Address.Rel) == (int)Address.Rel ? "+" : null;
             if (vec.Length == 3)
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Cell: return $"r:{vec[1]}.{vec[2]}";
-                    case Address.Range: return $"r:0.0:{vec[1]}.{vec[2]}";
+                    case Address.Cell: return $"r:{rel}{vec[1]}.{rel}{vec[2]}";
+                    case Address.Range: return $"r:y.x:{rel}{vec[1]}.{rel}{vec[2]}";
+                    case Address.RowOrCol: return $"r:r.c:{rel}{vec[1]}.{rel}{vec[2]}";
+                    case Address.ColToCol: return $"r:c2c:{rel}{vec[1]}.{rel}{vec[2]}";
+                    case Address.RowToRow: return $"r:r2r:{rel}{vec[1]}.{rel}{vec[2]}";
                     default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
             else if (vec.Length == 5)
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Range: return $"r:{vec[1]}.{vec[2]}:{vec[3]}.{vec[4]}";
+                    case Address.Range: return $"r:{rel}{vec[1]}.{rel}{vec[2]}:{rel}{vec[3]}.{rel}{vec[4]}";
                     default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
             else throw new ArgumentOutOfRangeException(nameof(address));
@@ -134,8 +153,8 @@ namespace ExcelTrans
                 long.TryParse(v, out var vl) ? vl :
                 (object)v;
 
-        internal static object CastValue(this string v, Type type) => type == null ? v : Convert.ChangeType(v, type);
-        internal static T CastValue<T>(this object v) => (T)Convert.ChangeType(v, typeof(T));
+        internal static object CastValue(this string v, Type type, object defaultValue = null) => type == null ? v : v != null ? Convert.ChangeType(v, type) : defaultValue;
+        internal static T CastValue<T>(this object v, T defaultValue = default(T)) => v != null ? (T)Convert.ChangeType(v, typeof(T)) : defaultValue;
 
         internal static int RowToInt(string row) => int.Parse(row);
         internal static int ColToInt(string col) => col.ToUpperInvariant().Aggregate(0, (a, x) => (a * 26) + (x - '@'));
