@@ -156,7 +156,8 @@ namespace ExcelTrans
         internal static object CastValue(this string v, Type type, object defaultValue = null) => type == null ? v : v != null ? Convert.ChangeType(v, type) : defaultValue;
         internal static T CastValue<T>(this object v, T defaultValue = default(T)) => v != null ? (T)Convert.ChangeType(v, typeof(T)) : defaultValue;
 
-        internal static int RowToInt(string row) => int.Parse(row);
+        internal static int RowToInt(string row) => !string.IsNullOrEmpty(row) ? int.Parse(row) : 0;
         internal static int ColToInt(string col) => col.ToUpperInvariant().Aggregate(0, (a, x) => (a * 26) + (x - '@'));
+        internal static void CellToInts(string cell, out int row, out int col) { var idx = cell.IndexOfAny("0123456789".ToCharArray()); var val = idx != -1 ? new[] { cell.Substring(0, idx), cell.Substring(idx) } : new[] { cell, string.Empty }; row = RowToInt(val[1]); col = ColToInt(val[0]); }
     }
 }

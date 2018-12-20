@@ -5,7 +5,6 @@ using OfficeOpenXml;
 using OfficeOpenXml.ConditionalFormatting;
 using OfficeOpenXml.ConditionalFormatting.Contracts;
 using OfficeOpenXml.Style;
-using OfficeOpenXml.Style.Dxf;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -18,6 +17,18 @@ namespace ExcelTrans
 {
     public static class ExcelExtensions
     {
+        static T ToStaticEnum<T>(string name, T defaultValue = default(T)) =>
+            string.IsNullOrEmpty(name) ? defaultValue :
+            (T)typeof(T).GetProperty(name, BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        static Color ToColor(string name, Color defaultValue = default(Color)) =>
+            string.IsNullOrEmpty(name) ? defaultValue :
+            name.StartsWith("#") ? ColorTranslator.FromHtml(name) :
+            ToStaticEnum<Color>(name);
+        static T ToEnum<T>(string name, T defaultValue = default(T)) => !string.IsNullOrEmpty(name) ? (T)Enum.Parse(typeof(T), name) : defaultValue;
+        static string NumberformatPrec(string prec, string defaultPrec) => string.IsNullOrEmpty(prec) ? defaultPrec : $"0.{new string('0', int.Parse(prec))}";
+
+        #region Execute
+
         public static object Execute(this IExcelContext ctx, IExcelCommand[] cmds, out Action after)
         {
             var si = ctx.GetCtx();
@@ -65,6 +76,10 @@ namespace ExcelTrans
             return cr;
         }
 
+        #endregion
+
+        #region Write
+
         public static void WriteRowFirstSet(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.FirstSet, s, out Action after);
         public static void WriteRowFirst(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.First, s, out Action after);
 
@@ -99,44 +114,28 @@ namespace ExcelTrans
         public static void WriteRowLast(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.Last, s, out Action after);
         public static void WriteRowLastSet(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.LastSet, s, out Action after);
 
-        static T ToStaticEnum<T>(string name, T defaultValue = default(T))
-        {
-            if (string.IsNullOrEmpty(name)) return defaultValue;
-            var propMethod = typeof(T).GetProperty(name, BindingFlags.Public | BindingFlags.Static);
-            if (propMethod == null)
-                throw new ArgumentNullException(nameof(name), $"Unable to find {name}");
-            return (T)propMethod.GetValue(null);
-        }
+        #endregion
 
-        static Color ToColor(string name, Color defaultValue = default(Color))
-        {
-            if (string.IsNullOrEmpty(name)) return defaultValue;
-            if (name.StartsWith("#")) return ColorTranslator.FromHtml(name);
-            return ToStaticEnum<Color>(name);
-        }
-
-        static T ToEnum<T>(string name, T defaultValue = default(T)) => !string.IsNullOrEmpty(name) ? (T)Enum.Parse(typeof(T), name) : defaultValue;
-
-        static string NumberformatPrec(string prec, string defaultPrec) => string.IsNullOrEmpty(prec) ? defaultPrec : $"0.{new string('0', int.Parse(prec))}";
+        #region Worksheet
 
         public static void ViewAction(this IExcelContext ctx, object value, ViewActionKind actionKind)
         {
             var view = ((ExcelContext)ctx).WS.View;
             switch (actionKind)
             {
-                case ViewActionKind.FreezePane: var val = (Tuple<int, int>)value; view.FreezePanes(val.Item1, val.Item2); break;
+                case ViewActionKind.FreezePane: ExcelService.CellToInts((string)value, out var row, out var col); view.FreezePanes(row, col); break;
                 case ViewActionKind.SetTabSelected: view.SetTabSelected(); break;
                 case ViewActionKind.UnfreezePane: view.UnFreezePanes(); break;
                 default: throw new ArgumentOutOfRangeException(nameof(actionKind));
             }
         }
 
-        public static void ConditionalFormatting(this IExcelContext ctx, int row, int col, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(row, col), styles);
-        public static void ConditionalFormatting(this IExcelContext ctx, int fromRow, int fromCol, int toRow, int toCol, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(fromRow, fromCol, toRow, toCol), styles);
-        public static void ConditionalFormatting(this IExcelContext ctx, Address r, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, 0, 0), styles);
-        public static void ConditionalFormatting(this IExcelContext ctx, Address r, int row, int col, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, row, col), styles);
-        public static void ConditionalFormatting(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), styles);
-        public static void ConditionalFormatting(this IExcelContext ctx, string address, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue, string[] styles)
+        public static void ConditionalFormatting(this IExcelContext ctx, int row, int col, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue) => ConditionalFormatting(ctx, ExcelService.GetAddress(row, col), value, formattingKind, priority, stopIfTrue);
+        public static void ConditionalFormatting(this IExcelContext ctx, int fromRow, int fromCol, int toRow, int toCol, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue) => ConditionalFormatting(ctx, ExcelService.GetAddress(fromRow, fromCol, toRow, toCol), value, formattingKind, priority, stopIfTrue);
+        public static void ConditionalFormatting(this IExcelContext ctx, Address r, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue) => ConditionalFormatting(ctx, ExcelService.GetAddress(r, 0, 0), value, formattingKind, priority, stopIfTrue);
+        public static void ConditionalFormatting(this IExcelContext ctx, Address r, int row, int col, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue) => ConditionalFormatting(ctx, ExcelService.GetAddress(r, row, col), value, formattingKind, priority, stopIfTrue);
+        public static void ConditionalFormatting(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue) => ConditionalFormatting(ctx, ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), value, formattingKind, priority, stopIfTrue);
+        public static void ConditionalFormatting(this IExcelContext ctx, string address, object value, ConditionalFormattingKind formattingKind, int? priority, bool stopIfTrue)
         {
             void toColorScale(ExcelConditionalFormattingColorScaleValue val, JToken t)
             {
@@ -154,7 +153,6 @@ namespace ExcelTrans
                 val.Value = t["value"].CastValue<double>();
                 val.Formula = (string)t["formula"];
             }
-
             var token = value != null ? JToken.Parse(value is string ? (string)value : JsonConvert.SerializeObject(value)) : null;
             var formatting = ((ExcelContext)ctx).WS.ConditionalFormatting;
             var ruleAddress = new ExcelAddress(ctx.DecodeAddress(address));
@@ -272,6 +270,12 @@ namespace ExcelTrans
             // RULE
             if (priority != null) rule.Priority = priority.Value;
             rule.StopIfTrue = stopIfTrue;
+            var stylesAsToken = token["styles"];
+            var styles =
+                stylesAsToken == null ? null :
+                stylesAsToken.Type == JTokenType.String ? new[] { stylesAsToken.ToObject<string>() } :
+                stylesAsToken.Type == JTokenType.Array ? stylesAsToken.ToObject<string[]>() :
+                null;
             if (styles != null)
                 foreach (var style in styles)
                 {
@@ -348,12 +352,16 @@ namespace ExcelTrans
                 }
         }
 
+        #endregion
+
+        #region Cells
+
         // https://stackoverflow.com/questions/40209636/epplus-number-format/40214134
-        public static void CellsStyle(this IExcelContext ctx, int row, int col, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(row, col), styles);
-        public static void CellsStyle(this IExcelContext ctx, int fromRow, int fromCol, int toRow, int toCol, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(fromRow, fromCol, toRow, toCol), styles);
-        public static void CellsStyle(this IExcelContext ctx, Address r, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, 0, 0), styles);
-        public static void CellsStyle(this IExcelContext ctx, Address r, int row, int col, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, row, col), styles);
-        public static void CellsStyle(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, params string[] styles) => ctx.CellsStyle(ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), styles);
+        public static void CellsStyle(this IExcelContext ctx, int row, int col, params string[] styles) => CellsStyle(ctx, ExcelService.GetAddress(row, col), styles);
+        public static void CellsStyle(this IExcelContext ctx, int fromRow, int fromCol, int toRow, int toCol, params string[] styles) => CellsStyle(ctx, ExcelService.GetAddress(fromRow, fromCol, toRow, toCol), styles);
+        public static void CellsStyle(this IExcelContext ctx, Address r, params string[] styles) => CellsStyle(ctx, ExcelService.GetAddress(r, 0, 0), styles);
+        public static void CellsStyle(this IExcelContext ctx, Address r, int row, int col, params string[] styles) => CellsStyle(ctx, ExcelService.GetAddress(r, row, col), styles);
+        public static void CellsStyle(this IExcelContext ctx, Address r, int fromRow, int fromCol, int toRow, int toCol, params string[] styles) => CellsStyle(ctx, ExcelService.GetAddress(r, fromRow, fromCol, toRow, toCol), styles);
         public static void CellsStyle(this IExcelContext ctx, string cells, string[] styles)
         {
             var range = ((ExcelContext)ctx).WS.Cells[ctx.DecodeAddress(cells)];
@@ -486,6 +494,8 @@ namespace ExcelTrans
                 default: throw new ArgumentOutOfRangeException(nameof(valueKind));
             }
         }
+
+        #endregion
 
         #region Column
 
