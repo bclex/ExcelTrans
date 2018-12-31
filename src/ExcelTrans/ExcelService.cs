@@ -102,8 +102,8 @@ namespace ExcelTrans
                     rowtorow2 = rel ? ctx.Y + vec[2] : vec[2];
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Cell: return ExcelCellBase.GetAddress(row, col);
-                    case Address.Range: return ExcelCellBase.GetAddress(ctx.Y, ctx.X, row, col);
+                    case Address.CellAbs: return ExcelCellBase.GetAddress(row, col);
+                    case Address.RangeAbs: return ExcelCellBase.GetAddress(ctx.Y, ctx.X, row, col);
                     case Address.RowOrCol: return vec[1] != 0 ? ExcelCellBase.GetAddressRow(row) : ExcelCellBase.GetAddressCol(col);
                     case Address.ColToCol: return $"{ExcelCellBase.GetAddressCol(coltocol1).Split(':')[0]}:{ExcelCellBase.GetAddressCol(coltocol2).Split(':')[0]}";
                     case Address.RowToRow: return $"{rowtorow1}:{rowtorow2}";
@@ -116,7 +116,7 @@ namespace ExcelTrans
                     fromCol = rel ? ctx.X + vec[2] : vec[2], toCol = rel ? ctx.X + vec[4] : vec[4];
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Range: return ExcelCellBase.GetAddress(fromRow, fromCol, toRow, toCol);
+                    case Address.RangeAbs: return ExcelCellBase.GetAddress(fromRow, fromCol, toRow, toCol);
                     default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
             }
@@ -130,8 +130,8 @@ namespace ExcelTrans
             if (vec.Length == 3)
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Cell: return $"r:{rel}{vec[1]}.{rel}{vec[2]}";
-                    case Address.Range: return $"r:y.x:{rel}{vec[1]}.{rel}{vec[2]}";
+                    case Address.CellAbs: return $"r:{rel}{vec[1]}.{rel}{vec[2]}";
+                    case Address.RangeAbs: return $"r:y.x:{rel}{vec[1]}.{rel}{vec[2]}";
                     case Address.RowOrCol: return $"r:r.c:{rel}{vec[1]}.{rel}{vec[2]}";
                     case Address.ColToCol: return $"r:c2c:{rel}{vec[1]}.{rel}{vec[2]}";
                     case Address.RowToRow: return $"r:r2r:{rel}{vec[1]}.{rel}{vec[2]}";
@@ -140,7 +140,7 @@ namespace ExcelTrans
             else if (vec.Length == 5)
                 switch ((Address)(vec[0] & 0xF))
                 {
-                    case Address.Range: return $"r:{rel}{vec[1]}.{rel}{vec[2]}:{rel}{vec[3]}.{rel}{vec[4]}";
+                    case Address.RangeAbs: return $"r:{rel}{vec[1]}.{rel}{vec[2]}:{rel}{vec[3]}.{rel}{vec[4]}";
                     default: throw new ArgumentOutOfRangeException(nameof(address));
                 }
             else throw new ArgumentOutOfRangeException(nameof(address));
