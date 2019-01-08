@@ -9,9 +9,9 @@ namespace ExcelTrans.Commands
         public When When { get; private set; }
         public Action<IExcelContext> Action { get; private set; }
         public Command(Action action)
-            : this(When.Normal, v => action()) { }
+            : this(When.Before, v => action()) { }
         public Command(Action<IExcelContext> action)
-            : this(When.Normal, action) { }
+            : this(When.Before, action) { }
         public Command(When when, Action action)
             : this(when, v => action()) { }
         public Command(When when, Action<IExcelContext> action)
@@ -34,6 +34,6 @@ namespace ExcelTrans.Commands
 
         void IExcelCommand.Execute(IExcelContext ctx) => Action(ctx);
 
-        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}Command{(When == When.Normal ? null : $"[{When}]")}: [action]"); }
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}Command{(When == When.Before ? null : $"[{When}]")}: [action]"); }
     }
 }

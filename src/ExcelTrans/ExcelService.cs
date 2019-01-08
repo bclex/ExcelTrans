@@ -18,7 +18,7 @@ namespace ExcelTrans
         void Describe(StringWriter w, int pad);
     }
 
-    public interface IExcelCommandSet
+    public interface IExcelSet
     {
         void Add(Collection<string> s);
         void Execute(IExcelContext ctx);
@@ -29,7 +29,7 @@ namespace ExcelTrans
         public static readonly string Comment = "^q|";
         public static readonly string Stream = "^q=";
         public static readonly string Break = "^q!";
-        public static string PopCommand => $"{Stream}{ExcelSerDes.Encode(new PopCommand())}";
+        public static string PopFrame => $"{Stream}{ExcelSerDes.Encode(new PopFrame())}";
         public static string PopSet => $"{Stream}{ExcelSerDes.Encode(new PopSet())}";
         public static string Encode(bool describe, params IExcelCommand[] cmds) => $"{(describe ? ExcelSerDes.Describe(Comment, cmds) : null)}{Stream}{ExcelSerDes.Encode(cmds)}";
         public static string Encode(params IExcelCommand[] cmds) => $"{Stream}{ExcelSerDes.Encode(cmds)}";
@@ -87,6 +87,7 @@ namespace ExcelTrans
         public static string GetAddress(this IExcelContext ctx, Address r, int row, int col) => DecodeAddress(ctx, GetAddress(r, row, col));
         public static string GetAddress(this IExcelContext ctx, Address r, int fromRow, string fromColumn, int toRow, string toColumn) => DecodeAddress(ctx, GetAddress(r, fromRow, fromColumn, toRow, toColumn));
         public static string GetAddress(this IExcelContext ctx, Address r, int fromRow, int fromColumn, int toRow, int toColumn) => DecodeAddress(ctx, GetAddress(r, fromRow, fromColumn, toRow, toColumn));
+
         public static string DecodeAddress(this IExcelContext ctx, string address)
         {
             if (!address.StartsWith("^")) return address;
@@ -122,6 +123,7 @@ namespace ExcelTrans
             }
             else throw new ArgumentOutOfRangeException(nameof(address));
         }
+
         internal static string DescribeAddress(string address)
         {
             if (!address.StartsWith("^")) return address;

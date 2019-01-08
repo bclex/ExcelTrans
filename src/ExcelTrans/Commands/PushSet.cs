@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace ExcelTrans.Commands
 {
-    public class PushSet : IExcelCommand, IExcelCommandSet
+    public class PushSet : IExcelCommand, IExcelSet
     {
         public When When { get; private set; }
         public int Headers { get; private set; }
@@ -55,9 +55,9 @@ namespace ExcelTrans.Commands
             }
         }
 
-        void IExcelCommandSet.Add(Collection<string> s) => _set.Add(s);
+        void IExcelSet.Add(Collection<string> s) => _set.Add(s);
 
-        void IExcelCommandSet.Execute(IExcelContext ctx)
+        void IExcelSet.Execute(IExcelContext ctx)
         {
             ctx.WriteRowFirstSet(null);
             var headers = _set.Take(Headers).ToArray();
@@ -65,7 +65,7 @@ namespace ExcelTrans.Commands
                 foreach (var g in Group(ctx, _set.Skip(Headers)))
                 {
                     ctx.WriteRowFirst(null);
-                    var si = ctx.Execute(Cmds(ctx, g), out var after);
+                    var frame = ctx.Execute(Cmds(ctx, g), out var after);
                     ctx.CsvY = 0;
                     foreach (var v in headers)
                     {
@@ -80,7 +80,7 @@ namespace ExcelTrans.Commands
                     }
                     after?.Invoke();
                     ctx.WriteRowLast(null);
-                    ctx.SetCtx(si);
+                    ctx.Frame = frame;
                 }
             ctx.WriteRowLastSet(null);
         }

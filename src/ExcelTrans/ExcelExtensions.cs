@@ -31,25 +31,25 @@ namespace ExcelTrans
 
         public static object Execute(this IExcelContext ctx, IExcelCommand[] cmds, out Action after)
         {
-            var si = ctx.GetCtx();
+            var frame = ctx.Frame;
             var afterCmds = new List<IExcelCommand>();
             foreach (var cmd in cmds)
                 if (cmd.When <= When.Before) cmd.Execute(ctx);
                 else afterCmds.Add(cmd);
             after = afterCmds.Count > 0 ? () => { foreach (var cmd in afterCmds) cmd.Execute(ctx); } : (Action)null;
-            return si;
+            return frame;
         }
 
         public static CommandRtn ExecuteRow(this IExcelContext ctx, When when, Collection<string> s, out Action after)
         {
             var cr = CommandRtn.None;
             var afterActions = new List<Action>();
-            foreach (var cmd in ctx.Cmds.SelectMany(z => z.Item1.Where(x => (x.When & when) == when)))
+            foreach (var cmd in ctx.CmdRows.Where(x => (x.When & when) == when))
             {
                 var r = cmd.Func(ctx, s);
                 if ((r & CommandRtn.Execute) == CommandRtn.Execute)
                 {
-                    ctx.SetCtx(ctx.Execute(cmd.Cmds, out Action subAfter));
+                    ctx.Frame = ctx.Execute(cmd.Cmds, out Action subAfter);
                     if (subAfter != null) afterActions.Add(subAfter);
                 }
                 cr |= r;
@@ -62,12 +62,12 @@ namespace ExcelTrans
         {
             var cr = CommandRtn.None;
             var afterActions = new List<Action>();
-            foreach (var cmd in ctx.Cmds.SelectMany(z => z.Item2))
+            foreach (var cmd in ctx.CmdCols)
             {
                 var r = cmd.Func(ctx, s, v, i);
                 if ((r & CommandRtn.Execute) == CommandRtn.Execute)
                 {
-                    ctx.SetCtx(ctx.Execute(cmd.Cmds, out Action subAfter));
+                    ctx.Frame = ctx.Execute(cmd.Cmds, out Action subAfter);
                     if (subAfter != null) afterActions.Add(subAfter);
                 }
                 cr |= r;

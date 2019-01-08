@@ -64,9 +64,9 @@
     <Compile Include="Commands\Address.cs" />
     <Compile Include="Commands\CommandRtn.cs" />
     <Compile Include="Commands\PopSet.cs" />
-    <Compile Include="Commands\PopCommand.cs" />
+    <Compile Include="Commands\PopFrame.cs" />
     <Compile Include="Commands\PushSet.cs" />
-    <Compile Include="Commands\PushCommand.cs" />
+    <Compile Include="Commands\PushFrame.cs" />
     <Compile Include="Commands\CellsStyle.cs" />
     <Compile Include="Commands\WorkbookOpen.cs" />
     <Compile Include="Commands\WorksheetsOpen.cs" />

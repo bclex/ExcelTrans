@@ -1,16 +1,15 @@
 ﻿using ExcelTrans.Utils;
 using System;
 using System.IO;
-using System.Linq;
 
 namespace ExcelTrans.Commands
 {
-    public struct PushCommand : IExcelCommand
+    public struct PushFrame : IExcelCommand
     {
         public When When { get; private set; }
         public IExcelCommand[] Cmds { get; private set; }
 
-        public PushCommand(params IExcelCommand[] cmds)
+        public PushFrame(params IExcelCommand[] cmds)
         {
             When = When.Normal;
             Cmds = cmds ?? throw new ArgumentNullException(nameof(cmds));
@@ -28,11 +27,10 @@ namespace ExcelTrans.Commands
 
         void IExcelCommand.Execute(IExcelContext ctx)
         {
-            var rows = Cmds.Select(x => x as CommandRow).Where(x => x != null).ToArray();
-            var cols = Cmds.Select(x => x as CommandCol).Where(x => x != null).ToArray();
-            ctx.Cmds.Push(new Tuple<CommandRow[], CommandCol[]>(rows, cols));
+            ctx.Frames.Push(ctx.Frame);
+            ctx.Execute(Cmds, out var after); after?.Invoke();
         }
 
-        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}PushCommand:"); ExcelSerDes.DescribeCommands(w, pad, Cmds); }
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}PushFrame:"); ExcelSerDes.DescribeCommands(w, pad, Cmds); }
     }
 }

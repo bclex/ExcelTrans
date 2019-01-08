@@ -11,6 +11,10 @@ namespace ExcelTrans.Commands
         public Func<IExcelContext, Collection<string>, CommandRtn> Func { get; private set; }
         public IExcelCommand[] Cmds { get; private set; }
 
+        public CommandRow(Func<CommandRtn> func, params IExcelCommand[] cmds)
+            : this(When.Before, (a, b) => func(), cmds) { }
+        public CommandRow(Func<IExcelContext, Collection<string>, CommandRtn> func, params IExcelCommand[] cmds)
+            : this(When.Before, func, cmds) { }
         public CommandRow(When when, Func<CommandRtn> func, params IExcelCommand[] cmds)
             : this(when, (a, b) => func(), cmds) { }
         public CommandRow(When when, Func<IExcelContext, Collection<string>, CommandRtn> func, params IExcelCommand[] cmds)
@@ -19,13 +23,29 @@ namespace ExcelTrans.Commands
             Func = func ?? throw new ArgumentNullException(nameof(func));
             Cmds = cmds;
         }
-        public CommandRow(When when, Func<CommandRtn> func, Func<IExcelCommand[]> cmds)
-            : this(when, (a, b) => func(), a => cmds()) { }
-        public CommandRow(When when, Func<IExcelContext, Collection<string>, CommandRtn> func, Func<IExcelContext, IExcelCommand[]> cmds)
+        public CommandRow(Func<CommandRtn> func, Action command)
+            : this(When.Before, (a, b) => func(), command) { }
+        public CommandRow(Func<IExcelContext, Collection<string>, CommandRtn> func, Action command)
+            : this(When.Before, func, command) { }
+        public CommandRow(When when, Func<CommandRtn> func, Action command)
+            : this(when, (a, b) => func(), command) { }
+        public CommandRow(When when, Func<IExcelContext, Collection<string>, CommandRtn> func, Action command)
         {
             When = when;
             Func = func ?? throw new ArgumentNullException(nameof(func));
-            Cmds = null;
+            Cmds = new[] { new Command(command) };
+        }
+        public CommandRow(Func<CommandRtn> func, Action<IExcelContext> command)
+            : this(When.Before, (a, b) => func(), command) { }
+        public CommandRow(Func<IExcelContext, Collection<string>, CommandRtn> func, Action<IExcelContext> command)
+            : this(When.Before, func, command) { }
+        public CommandRow(When when, Func<CommandRtn> func, Action<IExcelContext> command)
+            : this(when, (a, b) => func(), command) { }
+        public CommandRow(When when, Func<IExcelContext, Collection<string>, CommandRtn> func, Action<IExcelContext> command)
+        {
+            When = when;
+            Func = func ?? throw new ArgumentNullException(nameof(func));
+            Cmds = new[] { new Command(command) };
         }
 
         void IExcelCommand.Read(BinaryReader r)
@@ -42,8 +62,14 @@ namespace ExcelTrans.Commands
             ExcelSerDes.EncodeCommands(w, Cmds);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) { }
+        void IExcelCommand.Execute(IExcelContext ctx) => ctx.CmdRows.Push(this);
 
-        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}CommandRow{(When == When.Normal ? null : $"[{When}]")}: [func]"); ExcelSerDes.DescribeCommands(w, pad, Cmds); }
+        void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}CommandRow{(When == When.Before ? null : $"[{When}]")}: [func]"); ExcelSerDes.DescribeCommands(w, pad, Cmds); }
+
+        internal static void Reset(IExcelContext ctx, int idx)
+        {
+            while (ctx.CmdRows.Count > idx)
+                ctx.CmdRows.Pop();
+        }
     }
 }

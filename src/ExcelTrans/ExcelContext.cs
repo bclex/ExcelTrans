@@ -15,10 +15,11 @@ namespace ExcelTrans
         int DeltaY { get; set; }
         int CsvX { get; set; }
         int CsvY { get; set; }
-        Stack<Tuple<CommandRow[], CommandCol[]>> Cmds { get; }
-        Stack<IExcelCommandSet> Sets { get; }
-        object GetCtx();
-        void SetCtx(object ctx);
+        Stack<CommandRow> CmdRows { get; }
+        Stack<CommandCol> CmdCols { get; }
+        Stack<IExcelSet> Sets { get; }
+        Stack<object> Frames { get; }
+        object Frame { get; set; }
     }
 
     internal class ExcelContext : IDisposable, IExcelContext
@@ -37,8 +38,10 @@ namespace ExcelTrans
         public int DeltaY { get; set; } = 1;
         public int CsvX { get; set; } = 1;
         public int CsvY { get; set; } = 1;
-        public Stack<Tuple<CommandRow[], CommandCol[]>> Cmds { get; } = new Stack<Tuple<CommandRow[], CommandCol[]>>();
-        public Stack<IExcelCommandSet> Sets { get; } = new Stack<IExcelCommandSet>();
+        public Stack<CommandRow> CmdRows { get; } = new Stack<CommandRow>();
+        public Stack<CommandCol> CmdCols { get; } = new Stack<CommandCol>();
+        public Stack<IExcelSet> Sets { get; } = new Stack<IExcelSet>();
+        public Stack<object> Frames { get; } = new Stack<object>();
         public ExcelPackage P;
         public ExcelWorkbook WB;
         public ExcelWorksheet WS;
@@ -48,14 +51,18 @@ namespace ExcelTrans
             P = password == null ? new ExcelPackage(path) : new ExcelPackage(path, password);
             WB = P.Workbook;
         }
+
         public ExcelWorksheet EnsureWorksheet() => WS ?? (WS = WB.Worksheets.Add($"Sheet {WB.Worksheets.Count + 1}"));
 
-        public object GetCtx() => new Tuple<int, int>(Cmds.Count, Sets.Count);
-        public void SetCtx(object ctx)
+        public object Frame
         {
-            var v = (Tuple<int, int>)ctx;
-            PopCommand.Reset(this, v.Item1);
-            PopSet.Reset(this, v.Item2);
+            get => new Tuple<int, int, int>(CmdRows.Count, CmdCols.Count, Sets.Count);
+            set
+            {
+                var v = (Tuple<int, int, int>)value;
+                CommandRow.Reset(this, v.Item1);
+                PopSet.Reset(this, v.Item2);
+            }
         }
     }
 }
