@@ -54,14 +54,23 @@ namespace ExcelTrans
 
         public ExcelWorksheet EnsureWorksheet() => WS ?? (WS = WB.Worksheets.Add($"Sheet {WB.Worksheets.Count + 1}"));
 
+        public void Flush()
+        {
+            Frames.Clear();
+            CommandRow.Flush(this, 0);
+            CommandCol.Flush(this, 0);
+            PopSet.Flush(this, 0);
+        }
+
         public object Frame
         {
             get => new Tuple<int, int, int>(CmdRows.Count, CmdCols.Count, Sets.Count);
             set
             {
                 var v = (Tuple<int, int, int>)value;
-                CommandRow.Reset(this, v.Item1);
-                PopSet.Reset(this, v.Item2);
+                CommandRow.Flush(this, v.Item1);
+                CommandCol.Flush(this, v.Item2);
+                PopSet.Flush(this, v.Item3);
             }
         }
     }

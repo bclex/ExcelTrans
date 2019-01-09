@@ -66,7 +66,7 @@ namespace ExcelTrans.Commands
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}CommandRow{(When == When.Before ? null : $"[{When}]")}: [func]"); ExcelSerDes.DescribeCommands(w, pad, Cmds); }
 
-        internal static void Reset(IExcelContext ctx, int idx)
+        internal static void Flush(IExcelContext ctx, int idx)
         {
             while (ctx.CmdRows.Count > idx)
                 ctx.CmdRows.Pop();

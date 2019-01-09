@@ -61,6 +61,7 @@ namespace ExcelTrans
                     else ctx.Sets.Peek().Add(x);
                     return true;
                 }).Any(x => !x);
+                ctx.Flush();
                 return ctx.P.GetAsByteArray();
             }
         }

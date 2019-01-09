@@ -9,7 +9,7 @@ namespace ExcelTrans.Commands
         void IExcelCommand.Write(BinaryWriter w) { }
         void IExcelCommand.Execute(IExcelContext ctx) => ctx.Sets.Pop().Execute(ctx);
 
-        internal static void Reset(IExcelContext ctx, int idx)
+        internal static void Flush(IExcelContext ctx, int idx)
         {
             while (ctx.Sets.Count > idx)
                 ctx.Sets.Pop().Execute(ctx);
