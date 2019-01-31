@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace ExcelTrans.Commands
 {
@@ -7,7 +8,7 @@ namespace ExcelTrans.Commands
         public When When { get; private set; }
         void IExcelCommand.Read(BinaryReader r) { }
         void IExcelCommand.Write(BinaryWriter w) { }
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.Sets.Pop().Execute(ctx);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => ctx.Sets.Pop().Execute(ctx);
 
         internal static void Flush(IExcelContext ctx, int idx)
         {

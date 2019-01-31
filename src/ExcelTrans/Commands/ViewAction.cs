@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace ExcelTrans.Commands
 {
@@ -29,7 +30,7 @@ namespace ExcelTrans.Commands
             w.Write((int)ActionKind);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.ViewAction(Value, ActionKind);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => ctx.ViewAction(Value, ActionKind);
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}ViewAction: {Value} - {ActionKind}"); }
     }

@@ -29,14 +29,15 @@ namespace ExcelTrans
 
         #region Execute
 
-        public static object Execute(this IExcelContext ctx, IExcelCommand[] cmds, out Action after)
+        public static object ExecuteCmd(this IExcelContext ctx, IExcelCommand[] cmds, out Action after)
         {
             var frame = ctx.Frame;
-            var afterCmds = new List<IExcelCommand>();
+            var afterActions = new List<Action>();
+            Action action2 = null;
             foreach (var cmd in cmds)
-                if (cmd.When <= When.Before) cmd.Execute(ctx);
-                else afterCmds.Add(cmd);
-            after = afterCmds.Count > 0 ? () => { foreach (var cmd in afterCmds) cmd.Execute(ctx); } : (Action)null;
+                if (cmd.When <= When.Before) { cmd.Execute(ctx, ref action2); if (action2 != null) { afterActions.Add(action2); action2 = null; } }
+                else afterActions.Add(() => { cmd.Execute(ctx, ref action2); if (action2 != null) { afterActions.Add(action2); action2 = null; } });
+            after = afterActions.Count > 0 ? () => { foreach (var action in afterActions) action?.Invoke(); } : (Action)null;
             return frame;
         }
 
@@ -49,30 +50,30 @@ namespace ExcelTrans
                 var r = cmd.Func(ctx, s);
                 if ((r & CommandRtn.Execute) == CommandRtn.Execute)
                 {
-                    ctx.Frame = ctx.Execute(cmd.Cmds, out Action subAfter);
-                    if (subAfter != null) afterActions.Add(subAfter);
+                    ctx.Frame = ctx.ExecuteCmd(cmd.Cmds, out Action action);
+                    if (action != null) afterActions.Add(action);
                 }
                 cr |= r;
             }
-            after = afterActions.Count > 0 ? () => { foreach (var action in afterActions) action(); } : (Action)null;
+            after = afterActions.Count > 0 ? () => { foreach (var action in afterActions) action.Invoke(); } : (Action)null;
             return cr;
         }
 
-        public static CommandRtn ExecuteCol(this IExcelContext ctx, Collection<string> s, object v, int i, out Action after)
+        public static CommandRtn ExecuteCol(this IExcelContext ctx, Collection<string> s, object v, out Action after)
         {
             var cr = CommandRtn.None;
             var afterActions = new List<Action>();
             foreach (var cmd in ctx.CmdCols)
             {
-                var r = cmd.Func(ctx, s, v, i);
+                var r = cmd.Func(ctx, s, v);
                 if ((r & CommandRtn.Execute) == CommandRtn.Execute)
                 {
-                    ctx.Frame = ctx.Execute(cmd.Cmds, out Action subAfter);
-                    if (subAfter != null) afterActions.Add(subAfter);
+                    ctx.Frame = ctx.ExecuteCmd(cmd.Cmds, out Action action);
+                    if (action != null) afterActions.Add(action);
                 }
                 cr |= r;
             }
-            after = afterActions.Count > 0 ? () => { foreach (var action in afterActions) action(); } : (Action)null;
+            after = afterActions.Count > 0 ? () => { foreach (var action in afterActions) action?.Invoke(); } : (Action)null;
             return cr;
         }
 
@@ -86,24 +87,28 @@ namespace ExcelTrans
         public static void WriteRow(this IExcelContext ctx, Collection<string> s)
         {
             var ws = ((ExcelContext)ctx).EnsureWorksheet();
+            ctx.X = ctx.XStart;
             // execute-row-before
             var cr = ctx.ExecuteRow(When.Before, s, out Action after);
             if ((cr & CommandRtn.Skip) == CommandRtn.Skip)
                 return;
-            ctx.X = ctx.XStart;
+            //
             for (var i = 0; i < s.Count; i++)
             {
                 ctx.CsvX = i + 1;
                 var v = s[i].ParseValue();
                 // execute-col
-                cr = ctx.ExecuteCol(s, v, i, out Action subAfter);
+                cr = ctx.ExecuteCol(s, v, out Action action);
                 if ((cr & CommandRtn.Skip) == CommandRtn.Skip)
                     continue;
-                if ((cr & CommandRtn.Formula) != CommandRtn.Formula) ws.SetValue(ctx.Y, ctx.X, v);
-                else ws.Cells[ctx.Y, ctx.X].Formula = s[i];
-                //if (v is DateTime) ws.Cells[ExcelCellBase.GetAddress(ctx.Y, ctx.X)].Style.Numberformat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
-                subAfter?.Invoke();
+                if (ctx.Y > 0 && ctx.X > 0)
+                {
+                    if ((cr & CommandRtn.Formula) != CommandRtn.Formula) ws.SetValue(ctx.Y, ctx.X, v);
+                    else ws.Cells[ctx.Y, ctx.X].Formula = s[i];
+                    //if (v is DateTime) ws.Cells[ExcelCellBase.GetAddress(ctx.Y, ctx.X)].Style.Numberformat.Format = DateTimeFormatInfo.CurrentInfo.ShortDatePattern;
+                }
                 ctx.X += ctx.DeltaX;
+                action?.Invoke();
             }
             after?.Invoke();
             ctx.Y += ctx.DeltaY;
@@ -403,7 +408,7 @@ namespace ExcelTrans
                 {
                     if (style.StartsWith("lc:"))
                     {
-                        if (range.Style.Fill.PatternType == ExcelFillStyle.None) range.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        if (range.Style.Fill.PatternType == ExcelFillStyle.None || range.Style.Fill.PatternType == ExcelFillStyle.Solid) range.Style.Fill.PatternType = ExcelFillStyle.Solid;
                         range.Style.Fill.BackgroundColor.SetColor(ToColor(style.Substring(3)));
                     }
                     else if (style.StartsWith("lf")) range.Style.Fill.PatternType = (ExcelFillStyle)int.Parse(style.Substring(2));

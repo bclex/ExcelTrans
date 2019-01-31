@@ -14,7 +14,7 @@ namespace ExcelTrans
         When When { get; }
         void Read(BinaryReader r);
         void Write(BinaryWriter w);
-        void Execute(IExcelContext ctx);
+        void Execute(IExcelContext ctx, ref Action after);
         void Describe(StringWriter w, int pad);
     }
 
@@ -54,7 +54,7 @@ namespace ExcelTrans
                 cr.Execute(sr, x =>
                 {
                     if (x == null || x.Count == 0 || x[0].StartsWith(Comment)) return true;
-                    else if (x[0].StartsWith(Stream)) { var r = ctx.Execute(Decode(x[0]), out var after) != null; after?.Invoke(); return r; }
+                    else if (x[0].StartsWith(Stream)) { var r = ctx.ExecuteCmd(Decode(x[0]), out var after) != null; after?.Invoke(); return r; }
                     else if (x[0].StartsWith(Break)) return false;
                     ctx.CsvY++;
                     if (ctx.Sets.Count == 0) ctx.WriteRow(x);
@@ -106,7 +106,7 @@ namespace ExcelTrans
                 {
                     case Address.CellAbs: return ExcelCellBase.GetAddress(row, col);
                     case Address.RangeAbs: return ExcelCellBase.GetAddress(ctx.Y, ctx.X, row, col);
-                    case Address.RowOrCol: return vec[1] != 0 ? ExcelCellBase.GetAddressRow(row) : ExcelCellBase.GetAddressCol(col);
+                    case Address.RowOrCol: return row != 0 ? ExcelCellBase.GetAddressRow(row) : col != 0 ? ExcelCellBase.GetAddressCol(col) : null;
                     case Address.ColToCol: return $"{ExcelCellBase.GetAddressCol(coltocol1).Split(':')[0]}:{ExcelCellBase.GetAddressCol(coltocol2).Split(':')[0]}";
                     case Address.RowToRow: return $"{rowtorow1}:{rowtorow2}";
                     default: throw new ArgumentOutOfRangeException(nameof(address));

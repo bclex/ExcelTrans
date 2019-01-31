@@ -32,7 +32,7 @@ namespace ExcelTrans.Commands
             ExcelSerDes.EncodeAction(w, Action);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => Action(ctx);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => Action(ctx);
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}Command{(When == When.Before ? null : $"[{When}]")}: [action]"); }
     }

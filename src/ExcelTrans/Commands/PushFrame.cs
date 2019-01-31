@@ -25,10 +25,10 @@ namespace ExcelTrans.Commands
             ExcelSerDes.EncodeCommands(w, Cmds);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx)
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after)
         {
             ctx.Frames.Push(ctx.Frame);
-            ctx.Execute(Cmds, out var after); after?.Invoke();
+            ctx.ExecuteCmd(Cmds, out after); //action?.Invoke();
         }
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}PushFrame:"); ExcelSerDes.DescribeCommands(w, pad, Cmds); }

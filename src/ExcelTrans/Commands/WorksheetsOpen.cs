@@ -24,7 +24,7 @@ namespace ExcelTrans.Commands
             w.Write(Name);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx)
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after)
         {
             var ctx2 = (ExcelContext)ctx;
             ctx2.WS = ctx2.WB.Worksheets[Name];

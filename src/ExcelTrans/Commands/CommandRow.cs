@@ -62,7 +62,7 @@ namespace ExcelTrans.Commands
             ExcelSerDes.EncodeCommands(w, Cmds);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.CmdRows.Push(this);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => ctx.CmdRows.Push(this);
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}CommandRow{(When == When.Before ? null : $"[{When}]")}: [func]"); ExcelSerDes.DescribeCommands(w, pad, Cmds); }
 

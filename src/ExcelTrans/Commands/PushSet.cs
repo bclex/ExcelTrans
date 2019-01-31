@@ -40,7 +40,7 @@ namespace ExcelTrans.Commands
             ExcelSerDes.EncodeFunc(w, Cmds);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.Sets.Push(this);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => ctx.Sets.Push(this);
 
         void IExcelCommand.Describe(StringWriter w, int pad)
         {
@@ -65,7 +65,7 @@ namespace ExcelTrans.Commands
                 foreach (var g in Group(ctx, _set.Skip(Headers)))
                 {
                     ctx.WriteRowFirst(null);
-                    var frame = ctx.Execute(Cmds(ctx, g), out var after);
+                    var frame = ctx.ExecuteCmd(Cmds(ctx, g), out var action);
                     ctx.CsvY = 0;
                     foreach (var v in headers)
                     {
@@ -78,7 +78,7 @@ namespace ExcelTrans.Commands
                         ctx.CsvY++;
                         ctx.WriteRow(v);
                     }
-                    after?.Invoke();
+                    action?.Invoke();
                     ctx.WriteRowLast(null);
                     ctx.Frame = frame;
                 }

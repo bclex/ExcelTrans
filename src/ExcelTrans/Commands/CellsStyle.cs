@@ -44,7 +44,7 @@ namespace ExcelTrans.Commands
                 w.Write(Styles[i]);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.CellsStyle(Cells, Styles);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => ctx.CellsStyle(Cells, Styles);
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}CellsStyle[{ExcelService.DescribeAddress(Cells)}]: {string.Join(", ", Styles)}"); }
 

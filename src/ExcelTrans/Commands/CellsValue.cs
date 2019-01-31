@@ -48,7 +48,7 @@ namespace ExcelTrans.Commands
             w.Write(ValueType != null); if (ValueType != null) w.Write(ValueType.ToString());
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.CellsValue(Cells, Value.CastValue(ValueType), ValueKind);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => ctx.CellsValue(Cells, Value.CastValue(ValueType), ValueKind);
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}CellsValue[{ExcelService.DescribeAddress(Cells)}]: {Value}{(ValueKind == CellValueKind.Value ? null : $" - {ValueKind}")}"); }
     }

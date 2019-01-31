@@ -28,7 +28,7 @@ namespace ExcelTrans.Commands
             w.Write(Password != null); if (Password != null) w.Write(Password);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx)
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after)
         {
             var ctx2 = (ExcelContext)ctx;
             var pathFile = new FileInfo(Path);

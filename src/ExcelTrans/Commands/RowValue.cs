@@ -37,7 +37,7 @@ namespace ExcelTrans.Commands
             w.Write(ValueType != null); if (ValueType != null) w.Write(ValueType.ToString());
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.RowValue(Row, Value.CastValue(ValueType), ValueKind);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => ctx.RowValue(Row, Value.CastValue(ValueType), ValueKind);
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}RowValue[{Row}]: {Value}{$" - {ValueKind}"}"); }
 

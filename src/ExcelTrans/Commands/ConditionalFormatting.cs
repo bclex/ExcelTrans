@@ -53,7 +53,7 @@ namespace ExcelTrans.Commands
             w.Write(StopIfTrue);
         }
 
-        void IExcelCommand.Execute(IExcelContext ctx) => ctx.ConditionalFormatting(Address, Value, FormattingKind, Priority, StopIfTrue);
+        void IExcelCommand.Execute(IExcelContext ctx, ref Action after) => ctx.ConditionalFormatting(Address, Value, FormattingKind, Priority, StopIfTrue);
 
         void IExcelCommand.Describe(StringWriter w, int pad) { w.WriteLine($"{new string(' ', pad)}ConditionalFormatting[{Address}]: {Value} - {FormattingKind}"); }
     }
