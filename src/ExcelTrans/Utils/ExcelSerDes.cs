@@ -15,10 +15,10 @@ namespace ExcelTrans.Utils
             typeof(ColumnValue),
             typeof(Command), typeof(CommandCol), typeof(CommandRow),
             typeof(ConditionalFormatting),
-            typeof(PopFrame), typeof(PopSet), typeof(PushFrame), typeof(PushSet),
+            typeof(PopFrame), typeof(PopSet), typeof(PushFrame), typeof(PushSet<>),
             typeof(RowValue),
             typeof(ViewAction),
-            typeof(WorkbookOpen), typeof(WorksheetsAdd), typeof(WorksheetsOpen) };
+            typeof(WorkbookOpen), typeof(WorksheetsAdd), typeof(WorksheetsCopy), typeof(WorksheetsDelete), typeof(WorksheetsOpen) };
 
         public static string Encode(params IExcelCommand[] cmds)
         {
@@ -76,9 +76,16 @@ namespace ExcelTrans.Utils
             w.Write((ushort)cmds.Length);
             foreach (var cmd in cmds)
             {
-                var cmdId = ExcelSerDes.cmds.IndexOf(cmd.GetType());
+                var cmdType = cmd.GetType();
+                var cmdId = ExcelSerDes.cmds.IndexOf(cmdType.GenericTypeArguments.Length == 0 ? cmdType : cmdType.GetGenericTypeDefinition());
                 if (cmdId == -1) throw new InvalidOperationException($"{cmd} does not exist");
                 w.Write((ushort)cmdId);
+                if (cmdType.GenericTypeArguments.Length > 0)
+                {
+                    w.Write((ushort)cmdType.GenericTypeArguments.Length);
+                    foreach (var x in cmdType.GenericTypeArguments)
+                        w.Write(x.FullName);
+                }
                 cmd.Write(w);
             }
         }
@@ -99,7 +106,15 @@ namespace ExcelTrans.Utils
             var cmds = new IExcelCommand[r.ReadUInt16()];
             for (var i = 0; i < cmds.Length; i++)
             {
-                var cmd = (IExcelCommand)FormatterServices.GetUninitializedObject(ExcelSerDes.cmds[r.ReadUInt16()]);
+                var cmdType = ExcelSerDes.cmds[r.ReadUInt16()];
+                if (cmdType.IsGenericTypeDefinition)
+                {
+                    var types = new Type[r.ReadUInt16()];
+                    for (var j = 0; j < types.Length; j++)
+                        types[j] = Type.GetType(r.ReadString());
+                    cmdType = cmdType.MakeGenericType(types);
+                }
+                var cmd = (IExcelCommand)FormatterServices.GetUninitializedObject(cmdType);
                 cmd.Read(r);
                 cmds[i] = cmd;
             }

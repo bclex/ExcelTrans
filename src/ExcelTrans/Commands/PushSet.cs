@@ -7,28 +7,28 @@ using System.Linq;
 
 namespace ExcelTrans.Commands
 {
-    public class PushSet : IExcelCommand, IExcelSet
+    public class PushSet<T> : IExcelCommand, IExcelSet
     {
         public When When { get; private set; }
         public int Headers { get; private set; }
-        public Func<IExcelContext, IEnumerable<Collection<string>>, IEnumerable<IGrouping<string, Collection<string>>>> Group { get; private set; }
+        public Func<IExcelContext, IEnumerable<Collection<string>>, IEnumerable<IGrouping<T, Collection<string>>>> Group { get; private set; }
         public Func<IExcelContext, object, IExcelCommand[]> Cmds { get; private set; }
         List<Collection<string>> _set;
 
-        public PushSet(Func<IExcelContext, IEnumerable<Collection<string>>, IEnumerable<IGrouping<string, Collection<string>>>> group, int headers = 1, Func<IExcelContext, IGrouping<string, Collection<string>>, IExcelCommand[]> cmds = null)
+        public PushSet(Func<IExcelContext, IEnumerable<Collection<string>>, IEnumerable<IGrouping<T, Collection<string>>>> group, int headers = 1, Func<IExcelContext, IGrouping<T, Collection<string>>, IExcelCommand[]> cmds = null)
         {
             if (cmds == null)
                 throw new ArgumentNullException(nameof(cmds));
             When = When.Normal;
             Headers = headers;
             Group = group;
-            Cmds = (z, x) => cmds(z, (IGrouping<string, Collection<string>>)x);
+            Cmds = (z, x) => cmds(z, (IGrouping<T, Collection<string>>)x);
         }
 
         void IExcelCommand.Read(BinaryReader r)
         {
             Headers = r.ReadByte();
-            Group = ExcelSerDes.DecodeFunc<IExcelContext, IEnumerable<Collection<string>>, IEnumerable<IGrouping<string, Collection<string>>>>(r);
+            Group = ExcelSerDes.DecodeFunc<IExcelContext, IEnumerable<Collection<string>>, IEnumerable<IGrouping<T, Collection<string>>>>(r);
             Cmds = ExcelSerDes.DecodeFunc<IExcelContext, object, IExcelCommand[]>(r);
             _set = new List<Collection<string>>();
         }

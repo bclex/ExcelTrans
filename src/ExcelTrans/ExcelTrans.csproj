@@ -48,6 +48,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\WorksheetsCopy.cs" />
+    <Compile Include="Commands\WorksheetsDelete.cs" />
     <Compile Include="ConditionalFormattingKind.cs" />
     <Compile Include="Commands\ConditionalFormatting.cs" />
     <Compile Include="ViewActionKind.cs" />
