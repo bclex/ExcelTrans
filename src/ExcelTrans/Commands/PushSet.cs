@@ -75,7 +75,7 @@ namespace ExcelTrans.Commands
                     ctx.CsvY = 0;
                     foreach (var v in g)
                     {
-                        ctx.CsvY++;
+                        ctx.AdvanceRow();
                         ctx.WriteRow(v);
                     }
                     action?.Invoke();

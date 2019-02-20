@@ -56,7 +56,7 @@ namespace ExcelTrans
                     if (x == null || x.Count == 0 || x[0].StartsWith(Comment)) return true;
                     else if (x[0].StartsWith(Stream)) { var r = ctx.ExecuteCmd(Decode(x[0]), out var after) != null; after?.Invoke(); return r; }
                     else if (x[0].StartsWith(Break)) return false;
-                    ctx.CsvY++;
+                    ctx.AdvanceRow();
                     if (ctx.Sets.Count == 0) ctx.WriteRow(x);
                     else ctx.Sets.Peek().Add(x);
                     return true;

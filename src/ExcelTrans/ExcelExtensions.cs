@@ -84,6 +84,7 @@ namespace ExcelTrans
         public static void WriteRowFirstSet(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.FirstSet, s, out Action after);
         public static void WriteRowFirst(this IExcelContext ctx, Collection<string> s) => ctx.ExecuteRow(When.First, s, out Action after);
 
+        public static void AdvanceRow(this IExcelContext ctx) => ctx.CsvY++;
         public static void WriteRow(this IExcelContext ctx, Collection<string> s)
         {
             var ws = ((ExcelContext)ctx).EnsureWorksheet();
