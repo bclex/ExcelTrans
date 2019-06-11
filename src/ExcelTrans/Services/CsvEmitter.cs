@@ -12,7 +12,7 @@ namespace ExcelTrans.Services
     /// <summary>
     /// CsvEmitter
     /// </summary>
-    public class CsvEmitter
+    public static class CsvEmitter
     {
         /// <summary>
         /// Emits the specified w.
@@ -20,7 +20,7 @@ namespace ExcelTrans.Services
         /// <typeparam name="TItem">The type of the item.</typeparam>
         /// <param name="w">The w.</param>
         /// <param name="set">The set.</param>
-        public void Emit<TItem>(TextWriter w, IEnumerable<TItem> set) { Emit<TItem>(CsvEmitContext.DefaultContext, w, set); }
+        public static void Emit<TItem>(TextWriter w, IEnumerable<TItem> set) => Emit(CsvEmitContext.DefaultContext, w, set);
         /// <summary>
         /// Emits the specified context.
         /// </summary>
@@ -28,7 +28,7 @@ namespace ExcelTrans.Services
         /// <param name="ctx">The context.</param>
         /// <param name="w">The w.</param>
         /// <param name="set">The set.</param>
-        public void Emit<TItem>(CsvEmitContext ctx, TextWriter w, IEnumerable<TItem> set)
+        public static void Emit<TItem>(CsvEmitContext ctx, TextWriter w, IEnumerable<TItem> set)
         {
             if (ctx == null)
                 throw new ArgumentNullException(nameof(ctx));
@@ -36,23 +36,24 @@ namespace ExcelTrans.Services
                 throw new ArgumentNullException(nameof(w));
             if (set == null)
                 throw new ArgumentNullException(nameof(set));
-            var itemProperties = GetItemProperties<TItem>((ctx.EmitOptions & CsvEmitOptions.HasHeaderRow) != 0);
-            var shouldEncodeValues = (ctx.EmitOptions & CsvEmitOptions.EncodeValues) != 0;
+            var hasHeaderRow = (ctx.EmitOptions & CsvEmitOptions.HasHeaderRow) != 0;
+            var encodeValues = (ctx.EmitOptions & CsvEmitOptions.EncodeValues) != 0;
+            var itemProperties = GetItemProperties<TItem>(hasHeaderRow);
 
             // header
             var fields = ctx.Fields.Count > 0 ? ctx.Fields : null;
             var b = new StringBuilder();
-            if ((ctx.EmitOptions & CsvEmitOptions.HasHeaderRow) != 0)
+            if (hasHeaderRow)
             {
                 foreach (var itemProperty in itemProperties)
                 {
                     // label
-                    var displayName = itemProperty.GetDisplayNameAttribute(); // GetCustomAttribute<DisplayNameAttribute>();
+                    var displayName = itemProperty.GetDisplayNameAttribute();
                     var name = displayName == null ? itemProperty.Name : displayName.DisplayName;
-                    if (fields != null && fields.TryGetValue(itemProperty.Name, out CsvEmitField field) && field != null)
+                    if (fields != null && fields.TryGetValue(itemProperty.Name, out var field) && field != null)
                         if (field.Ignore) continue;
                         else if (field.DisplayName != null) name = field.DisplayName;
-                    b.Append(Encode(shouldEncodeValues ? EncodeValue(name) : name) + ",");
+                    b.Append(Encode(encodeValues ? EncodeValue(name) : name) + ",");
                 }
                 if (b.Length > 0)
                     b.Length--;
@@ -73,43 +74,35 @@ namespace ExcelTrans.Services
                         foreach (var itemProperty in itemProperties)
                         {
                             // value
-                            string valueAsText;
-                            var value = itemProperty.GetValue(item);
-                            if (fields != null && fields.TryGetValue(itemProperty.Name, out CsvEmitField field) && field != null)
+                            string value;
+                            var itemValue = itemProperty.GetValue(item);
+                            if (fields != null && fields.TryGetValue(itemProperty.Name, out var field) && field != null)
                             {
-                                if (field.Ignore)
-                                    continue;
-                                var fieldFormatter = field.CustomFieldFormatter;
-                                if (fieldFormatter == null)
-                                {
-                                    // default formatter
-                                    valueAsText = value != null ? value.ToString() : string.Empty;
-                                    if (valueAsText.Length == 0)
-                                        valueAsText = field.DefaultValue;
-                                    continue;
-                                }
-                                // formatter
-                                valueAsText = fieldFormatter(field, item, value);
-                                if (!string.IsNullOrEmpty(valueAsText))
+                                if (field.Ignore) continue;
+                                value = field.CustomFieldFormatter == null ? itemValue?.ToString() ?? string.Empty : field.CustomFieldFormatter(field, item, itemValue);
+                                if (value.Length == 0)
+                                    value = field.DefaultValue ?? string.Empty;
+                                if (value.Length != 0)
                                 {
                                     var args = field.Args;
                                     if (args != null)
                                     {
                                         if (args.doNotEncode == true)
                                         {
-                                            b.Append(valueAsText + ",");
+                                            b.Append(value + ",");
                                             continue;
                                         }
                                         if (args.asExcelFunction == true)
-                                            valueAsText = "=" + valueAsText;
+                                            value = "=" + value;
                                     }
                                 }
                             }
-                            else valueAsText = (value != null ? value.ToString() : string.Empty);
+                            else value = itemValue?.ToString() ?? string.Empty;
                             // append value
-                            b.Append(Encode(shouldEncodeValues ? EncodeValue(valueAsText) : valueAsText) + ",");
+                            b.Append(Encode(encodeValues ? EncodeValue(value) : value) + ",");
                         }
-                        b.Length--;
+                        if (b.Length > 0)
+                            b.Length--;
                         w.Write(b.ToString() + Environment.NewLine);
                     }
                     w.Flush();

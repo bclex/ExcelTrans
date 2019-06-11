@@ -40,18 +40,16 @@ namespace ExcelTrans
             using (var s1 = a.Item1)
             {
                 s1.Seek(0, SeekOrigin.Begin);
-                var sr = new StreamReader(s1);
-                var s2 = new MemoryStream(Build(sr));
+                var s2 = new MemoryStream(Build(s1));
                 return new Tuple<Stream, string, string>(s2, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", a.Item3.Replace(".csv", ".xlsx"));
             }
         }
 
-        static byte[] Build(TextReader sr)
+        static byte[] Build(Stream s)
         {
-            var cr = new CsvReader();
             using (var ctx = new ExcelContext())
             {
-                cr.Execute(sr, x =>
+                CsvReader.Execute(s, x =>
                 {
                     if (x == null || x.Count == 0 || x[0].StartsWith(Comment)) return true;
                     else if (x[0].StartsWith(Stream)) { var r = ctx.ExecuteCmd(Decode(x[0]), out var after) != null; after?.Invoke(); return r; }

@@ -10,47 +10,20 @@ namespace ExcelTrans.Services
     /// <summary>
     /// Processes the input CSV
     /// </summary>
-    public class CsvReader
+    public static class CsvReader
     {
-        /// <summary>
-        /// The delimiter as string
-        /// </summary>
-        string _delimiterAsString;
-
-        /// <summary>
-        /// Gets or sets the delimiter as string.
-        /// </summary>
-        /// <value>
-        /// The delimiter as string.
-        /// </value>
-        string DelimiterAsString
-        {
-            get
-            {
-                if (_delimiterAsString == null)
-                    try
-                    {
-                        _delimiterAsString = CultureInfo.CurrentCulture.TextInfo.ListSeparator;
-                        if (_delimiterAsString.Length != 1)
-                            _delimiterAsString = ",";
-                    }
-                    catch (Exception) { _delimiterAsString = ","; }
-                return _delimiterAsString;
-            }
-            set { _delimiterAsString = value; }
-        }
-
         /// <summary>
         /// Executes the specified reader.
         /// </summary>
         /// <param name="reader">The reader instance.</param>
         /// <param name="action">The logic to execute.</param>
         /// <exception cref="System.ArgumentNullException">If the reader instance is null</exception>
-        public IEnumerable<T> Execute<T>(TextReader reader, Func<Collection<string>, T> action)
+        public static IEnumerable<T> Execute<T>(Stream stream, Func<Collection<string>, T> action, CsvReaderSettings settings = null)
         {
-            if (reader == null)
-                throw new ArgumentNullException(nameof(reader));
-            var delimiter = DelimiterAsString[0];
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+            var reader = new StreamReader(stream);
+            var delimiter = settings != null ? settings.DelimiterAsString[0] : ',';
             string line;
             while ((line = reader.ReadLine()) != null)
             {
@@ -64,7 +37,7 @@ namespace ExcelTrans.Services
         /// </summary>
         /// <param name="line">The line to parse.</param>
         /// <returns>A collection of columns</returns>
-        Collection<string> ParseLineIntoEntries(char delimiter, string line, Func<string> readLine)
+        static Collection<string> ParseLineIntoEntries(char delimiter, string line, Func<string> readLine)
         {
             var list = new Collection<string>();
             var lineArray = line.ToCharArray();
