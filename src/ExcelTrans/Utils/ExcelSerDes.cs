@@ -15,6 +15,7 @@ namespace ExcelTrans.Utils
             typeof(ColumnValue),
             typeof(Command), typeof(CommandCol), typeof(CommandRow),
             typeof(ConditionalFormatting),
+            typeof(Flush),
             typeof(PopFrame), typeof(PopSet), typeof(PushFrame), typeof(PushSet<>),
             typeof(RowValue),
             typeof(ViewAction),

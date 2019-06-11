@@ -20,6 +20,7 @@ namespace ExcelTrans
         Stack<IExcelSet> Sets { get; }
         Stack<object> Frames { get; }
         object Frame { get; set; }
+        void Flush();
     }
 
     internal class ExcelContext : IDisposable, IExcelContext

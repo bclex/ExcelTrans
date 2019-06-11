@@ -49,6 +49,7 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Commands\Flush.cs" />
     <Compile Include="Commands\WorksheetsCopy.cs" />
     <Compile Include="Commands\WorksheetsDelete.cs" />
     <Compile Include="ConditionalFormattingKind.cs" />
