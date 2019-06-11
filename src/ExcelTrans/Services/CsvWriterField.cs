@@ -3,18 +3,15 @@ using System;
 namespace ExcelTrans.Services
 {
     /// <summary>
-    /// CsvEmitField
+    /// CsvWriterField
     /// </summary>
-    public class CsvEmitField
+    public class CsvWriterField
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="CsvEmitField"/> class.
+        /// Initializes a new instance of the <see cref="CsvWriterField"/> class.
         /// </summary>
         /// <param name="name">The name.</param>
-        public CsvEmitField(string name)
-        {
-            Name = name;
-        }
+        public CsvWriterField(string name) => Name = name;
         /// <summary>
         /// Gets or sets the name.
         /// </summary>
@@ -42,7 +39,7 @@ namespace ExcelTrans.Services
         /// <value>
         /// The custom field formatter.
         /// </value>
-        public Func<CsvEmitField, object, object, string> CustomFieldFormatter { get; set; }
+        public Func<CsvWriterField, object, object, string> CustomFieldFormatter { get; set; }
         /// <summary>
         /// Gets or sets the default value.
         /// </summary>

@@ -5,43 +5,43 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using CsvEmitOptions = ExcelTrans.Services.CsvEmitContext.CsvEmitOptions;
+using WriteOptions = ExcelTrans.Services.CsvWriterSettings.WriteOptions;
 
 namespace ExcelTrans.Services
 {
     /// <summary>
-    /// CsvEmitter
+    /// CsvWriter
     /// </summary>
-    public static class CsvEmitter
+    public static class CsvWriter
     {
         /// <summary>
-        /// Emits the specified w.
+        /// Writes the specified w.
         /// </summary>
         /// <typeparam name="TItem">The type of the item.</typeparam>
         /// <param name="w">The w.</param>
         /// <param name="set">The set.</param>
-        public static void Emit<TItem>(TextWriter w, IEnumerable<TItem> set) => Emit(CsvEmitContext.DefaultContext, w, set);
+        public static void Write<TItem>(TextWriter w, IEnumerable<TItem> set) => Write(w, set, CsvWriterSettings.DefaultSettings);
         /// <summary>
-        /// Emits the specified context.
+        /// Writes the specified context.
         /// </summary>
         /// <typeparam name="TItem">The type of the item.</typeparam>
-        /// <param name="ctx">The context.</param>
         /// <param name="w">The w.</param>
         /// <param name="set">The set.</param>
-        public static void Emit<TItem>(CsvEmitContext ctx, TextWriter w, IEnumerable<TItem> set)
+        /// <param name="settings">The context.</param>
+        public static void Write<TItem>(TextWriter w, IEnumerable<TItem> set, CsvWriterSettings settings = null)
         {
-            if (ctx == null)
-                throw new ArgumentNullException(nameof(ctx));
             if (w == null)
                 throw new ArgumentNullException(nameof(w));
             if (set == null)
                 throw new ArgumentNullException(nameof(set));
-            var hasHeaderRow = (ctx.EmitOptions & CsvEmitOptions.HasHeaderRow) != 0;
-            var encodeValues = (ctx.EmitOptions & CsvEmitOptions.EncodeValues) != 0;
+            if (settings == null)
+                settings = CsvWriterSettings.DefaultSettings;
+            var hasHeaderRow = (settings.EmitOptions & WriteOptions.HasHeaderRow) != 0;
+            var encodeValues = (settings.EmitOptions & WriteOptions.EncodeValues) != 0;
             var itemProperties = GetItemProperties<TItem>(hasHeaderRow);
 
             // header
-            var fields = ctx.Fields.Count > 0 ? ctx.Fields : null;
+            var fields = settings.Fields.Count > 0 ? settings.Fields : null;
             var b = new StringBuilder();
             if (hasHeaderRow)
             {
@@ -63,9 +63,9 @@ namespace ExcelTrans.Services
             // rows
             try
             {
-                foreach (var group in set.Cast<object>().GroupAt(ctx.FlushAt))
+                foreach (var group in set.Cast<object>().GroupAt(settings.FlushAt))
                 {
-                    var newGroup = ctx.BeforeFlush == null ? group : ctx.BeforeFlush(group);
+                    var newGroup = settings.BeforeFlush == null ? group : settings.BeforeFlush(group);
                     if (newGroup == null)
                         return;
                     foreach (var item in newGroup)

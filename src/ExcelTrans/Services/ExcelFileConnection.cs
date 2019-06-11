@@ -9,7 +9,7 @@ namespace ExcelTrans.Services
 {
     public static class ExcelFileConnection
     {
-        private static string GetConnectionString(string file, bool hasHeader, bool allText)
+        static string GetConnectionString(string file, bool hasHeader, bool allText)
         {
             var extension = Path.GetExtension(file).ToLowerInvariant();
             if (extension.Equals(".csv", StringComparison.OrdinalIgnoreCase))
@@ -50,13 +50,13 @@ namespace ExcelTrans.Services
             }
         }
 
-        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText) { return GetAllRows(file, minColumns, hasHeader, allText, "Sheet1$"); }
-        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText, int rows) { return GetAllRows(file, minColumns, hasHeader, allText, rows, "Sheet1$"); }
-        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText, string sheetName) { return ExecuteSqlAgainstFile(file, minColumns, hasHeader, allText, "Select * From [" + sheetName + "]"); }
-        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText, string sheetName, string sql) { return ExecuteSqlAgainstFile(file, minColumns, hasHeader, allText, string.Format(sql, sheetName)); }
-        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText, int rows, string sheetName) { return ExecuteSqlAgainstFile(file, minColumns, hasHeader, allText, "Select Top " + rows.ToString() + " * From [" + sheetName + "]"); }
+        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText) => GetAllRows(file, minColumns, hasHeader, allText, "Sheet1$");
+        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText, int rows) => GetAllRows(file, minColumns, hasHeader, allText, rows, "Sheet1$");
+        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText, string sheetName) => ExecuteSqlAgainstFile(file, minColumns, hasHeader, allText, $"Select * From [{sheetName}]");
+        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText, string sheetName, string sql) => ExecuteSqlAgainstFile(file, minColumns, hasHeader, allText, string.Format(sql, sheetName));
+        public static DataTable GetAllRows(string file, int minColumns, bool hasHeader, bool allText, int rows, string sheetName) => ExecuteSqlAgainstFile(file, minColumns, hasHeader, allText, $"Select Top {rows} * From [{sheetName}]");
 
-        private static DataTable ExecuteSqlAgainstFile(string file, int minColumns, bool hasHeader, bool allText, string sql)
+        static DataTable ExecuteSqlAgainstFile(string file, int minColumns, bool hasHeader, bool allText, string sql)
         {
             if (string.IsNullOrEmpty(file) || !File.Exists(file))
                 return null;
@@ -82,16 +82,9 @@ namespace ExcelTrans.Services
             var column = row.Table.Columns[fieldName];
             switch (column.DataType.ToString())
             {
-                case "System.DateTime":
-                    if (row[fieldName] == DBNull.Value)
-                        return string.Empty;
-                    return ((DateTime)row[fieldName]).ToString("MM/dd/yyyy");
-                case "System.String":
-                    return (row.Field<string>(fieldName) ?? string.Empty);
-                default:
-                    if (row[fieldName] == DBNull.Value || row[fieldName] == null)
-                        return string.Empty;
-                    return row[fieldName].ToString();
+                case "System.DateTime": return row[fieldName] == DBNull.Value ? string.Empty : ((DateTime)row[fieldName]).ToString("MM/dd/yyyy");
+                case "System.String": return row.Field<string>(fieldName) ?? string.Empty;
+                default: return row[fieldName] == DBNull.Value || row[fieldName] == null ? string.Empty : row[fieldName].ToString();
             }
         }
     }

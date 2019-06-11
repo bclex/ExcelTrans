@@ -5,14 +5,14 @@ using System.Collections.ObjectModel;
 namespace ExcelTrans.Services
 {
     /// <summary>
-    /// CsvEmitContext
+    /// CsvWriterSettings
     /// </summary>
-    public class CsvEmitContext
+    public class CsvWriterSettings
     {
         /// <summary>
-        /// CsvEmitFilterMode
+        /// WriteFilterMode
         /// </summary>
-        public enum CsvEmitFilterMode
+        public enum WriteFilterMode
         {
             /// <summary>
             /// ExceptionsInFields
@@ -25,9 +25,9 @@ namespace ExcelTrans.Services
         }
 
         /// <summary>
-        /// CsvEmitOptions
+        /// WriteOptions
         /// </summary>
-        public enum CsvEmitOptions
+        public enum WriteOptions
         {
             /// <summary>
             /// HasHeaderRow
@@ -44,9 +44,9 @@ namespace ExcelTrans.Services
         }
 
         /// <summary>
-        /// CsvEmitFieldCollection
+        /// FieldCollection
         /// </summary>
-        public class CsvEmitFieldCollection : KeyedCollection<string, CsvEmitField>
+        public class FieldCollection : KeyedCollection<string, CsvWriterField>
         {
             /// <summary>
             /// Tries the get value.
@@ -54,7 +54,7 @@ namespace ExcelTrans.Services
             /// <param name="name">The name.</param>
             /// <param name="field">The field.</param>
             /// <returns></returns>
-            public bool TryGetValue(string name, out CsvEmitField field)
+            public bool TryGetValue(string name, out CsvWriterField field)
             {
                 if (!Contains(name))
                 {
@@ -72,32 +72,32 @@ namespace ExcelTrans.Services
             /// <returns>
             /// The key for the specified element.
             /// </returns>
-            protected override string GetKeyForItem(CsvEmitField item) { return item.Name; }
+            protected override string GetKeyForItem(CsvWriterField item) => item.Name;
         }
 
         /// <summary>
         /// DefaultContext
         /// </summary>
-        public static readonly CsvEmitContext DefaultContext = new CsvEmitContext { };
+        public static readonly CsvWriterSettings DefaultSettings = new CsvWriterSettings { };
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CsvEmitContext"/> class.
+        /// Initializes a new instance of the <see cref="CsvWriterSettings"/> class.
         /// </summary>
-        public CsvEmitContext()
+        public CsvWriterSettings()
         {
-            EmitOptions = CsvEmitOptions.IncludeFields | CsvEmitOptions.HasHeaderRow | CsvEmitOptions.EncodeValues;
-            FilterMode = CsvEmitFilterMode.ExceptionsInFields;
-            Fields = new CsvEmitFieldCollection();
+            EmitOptions = WriteOptions.IncludeFields | WriteOptions.HasHeaderRow | WriteOptions.EncodeValues;
+            FilterMode = WriteFilterMode.ExceptionsInFields;
+            Fields = new FieldCollection();
             FlushAt = 500;
         }
 
         /// <summary>
         /// Gets or sets the <see cref="System.Boolean"/> with the specified option.
         /// </summary>
-        public bool this[CsvEmitOptions option]
+        public bool this[WriteOptions option]
         {
-            get { return ((EmitOptions & option) == option); }
-            set { EmitOptions = (value ? EmitOptions | option : EmitOptions & ~option); }
+            get => (EmitOptions & option) == option;
+            set => EmitOptions = value ? EmitOptions | option : EmitOptions & ~option;
         }
 
         /// <summary>
@@ -108,8 +108,8 @@ namespace ExcelTrans.Services
         /// </value>
         public bool HasHeaderRow
         {
-            get { return this[CsvEmitOptions.HasHeaderRow]; }
-            set { this[CsvEmitOptions.HasHeaderRow] = value; }
+            get => this[WriteOptions.HasHeaderRow];
+            set => this[WriteOptions.HasHeaderRow] = value;
         }
 
         /// <summary>
@@ -118,18 +118,18 @@ namespace ExcelTrans.Services
         /// <value>
         /// The filter mode.
         /// </value>
-        public CsvEmitFilterMode FilterMode { get; set; }
+        public WriteFilterMode FilterMode { get; set; }
         /// <summary>
         /// Gets the fields.
         /// </summary>
-        public CsvEmitFieldCollection Fields { get; private set; }
+        public FieldCollection Fields { get; private set; }
         /// <summary>
         /// Gets or sets the emit options.
         /// </summary>
         /// <value>
         /// The emit options.
         /// </value>
-        public CsvEmitOptions EmitOptions { get; set; }
+        public WriteOptions EmitOptions { get; set; }
         /// <summary>
         /// Gets or sets the flush at.
         /// </summary>
