@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -18,7 +17,7 @@ namespace ExcelTrans.Services
         /// <param name="reader">The reader instance.</param>
         /// <param name="action">The logic to execute.</param>
         /// <exception cref="System.ArgumentNullException">If the reader instance is null</exception>
-        public static IEnumerable<T> Execute<T>(Stream stream, Func<Collection<string>, T> action, CsvReaderSettings settings = null)
+        public static IEnumerable<T> Execute<T>(Stream stream, Func<Collection<string>, T> action, int startRow = 0, CsvReaderSettings settings = null)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -27,6 +26,11 @@ namespace ExcelTrans.Services
             string line;
             while ((line = reader.ReadLine()) != null)
             {
+                if (startRow > 0)
+                {
+                    startRow--;
+                    continue;
+                }
                 var entries = !string.IsNullOrEmpty(line.Trim()) ? ParseLineIntoEntries(delimiter, line, () => reader.ReadLine()) : null;
                 yield return action(entries);
             }

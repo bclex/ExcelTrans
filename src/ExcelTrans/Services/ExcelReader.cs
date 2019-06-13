@@ -15,7 +15,7 @@ namespace ExcelTrans.Services
     /// </summary>
     public static class ExcelReader
     {
-        public static IEnumerable<T> ExecuteOpenXml<T>(Stream stream, Func<Collection<string>, T> action, int width, int row = 0)
+        public static IEnumerable<T> ExecuteOpenXml<T>(Stream stream, Func<Collection<string>, T> action, int width, int startRow = 0)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -24,7 +24,7 @@ namespace ExcelTrans.Services
                 var ws = p.Workbook.Worksheets[1];
                 ExcelRange range = null;
                 var list = new Collection<string>();
-                while ((range = ws.Cells[row++, width]) != null)
+                while ((range = ws.Cells[startRow++, width]) != null)
                 {
                     var entries = ParseIntoEntries(list, range);
                     yield return action(entries);
@@ -32,7 +32,7 @@ namespace ExcelTrans.Services
             }
         }
 
-        public static IEnumerable<T> ExecuteOpenXml<T>(string path, Func<Collection<string>, T> action, int width, int row = 0)
+        public static IEnumerable<T> ExecuteOpenXml<T>(string path, Func<Collection<string>, T> action, int width, int startRow = 0)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -42,7 +42,7 @@ namespace ExcelTrans.Services
                 var ws = p.Workbook.Worksheets[1];
                 ExcelRange range = null;
                 var list = new Collection<string>();
-                while ((range = ws.Cells[row++, width]) != null)
+                while ((range = ws.Cells[startRow++, width]) != null)
                 {
                     var entries = ParseIntoEntries(list, range);
                     yield return action(entries);
@@ -50,7 +50,7 @@ namespace ExcelTrans.Services
             }
         }
 
-        public static IEnumerable<T> ExecuteRawXml<T>(Stream stream, Func<Collection<string>, T> action, int width, int row = 0)
+        public static IEnumerable<T> ExecuteRawXml<T>(Stream stream, Func<Collection<string>, T> action, int width, int startRow = 0)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -73,9 +73,9 @@ namespace ExcelTrans.Services
                 var list = new Collection<string>();
                 foreach (var r in doc.Descendants("tr"))
                 {
-                    if (row > 0)
+                    if (startRow > 0)
                     {
-                        row--;
+                        startRow--;
                         continue;
                     }
                     var entries = ParseIntoEntries(list, r, width);
@@ -86,7 +86,7 @@ namespace ExcelTrans.Services
             }
         }
 
-        public static IEnumerable<T> ExecuteRaw2Xml<T>(Stream stream, Func<Collection<string>, T> action, int width, int row = 0)
+        public static IEnumerable<T> ExecuteRaw2Xml<T>(Stream stream, Func<Collection<string>, T> action, int width, int startRow = 0)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -107,9 +107,9 @@ namespace ExcelTrans.Services
                     {
                         if (r.NodeType != XmlNodeType.Element || r.Name != "tr")
                             continue;
-                        if (row > 0)
+                        if (startRow > 0)
                         {
-                            row--;
+                            startRow--;
                             continue;
                         }
                         var entries = ParseIntoEntries(list, r, width);
@@ -121,22 +121,9 @@ namespace ExcelTrans.Services
             }
         }
 
-        static Exception ParsingException(Exception e, string xml)
-        {
-            var msg = e.Message;
-            if (!msg.Contains("Line") || !msg.Contains("position"))
-                return e;
-            var idx = msg.IndexOf("Line"); var idx2 = msg.IndexOf(",", idx); var line = int.Parse(msg.Substring(idx + 4, idx2 - idx - 4));
-            if (line != 1)
-                return e;
-            idx = msg.IndexOf("position"); idx2 = msg.IndexOf(".", idx); var position = int.Parse(msg.Substring(idx + 8, idx2 - idx - 8));
-            var error = xml.Substring(position - 30, 30) + "!!" + xml.Substring(position, 20);
-            return new ArgumentOutOfRangeException(msg, error);
-        }
+        public static IEnumerable<T> ExecuteRawXml<T>(string path, Func<Collection<string>, T> action, int width, int startRow = 0) => ExecuteRawXml(File.OpenRead(path), action, width, startRow);
 
-        public static IEnumerable<T> ExecuteRawXml<T>(string path, Func<Collection<string>, T> action, int width, int row = 0) => ExecuteRawXml(File.OpenRead(path), action, width, row);
-
-        public static IEnumerable<T> ExecuteBinary<T>(string path, Func<Collection<string>, T> action, int width, int row = 0)
+        public static IEnumerable<T> ExecuteBinary<T>(string path, Func<Collection<string>, T> action, int width, int startRow = 0)
         {
             if (path == null)
                 throw new ArgumentNullException(nameof(path));
@@ -144,9 +131,9 @@ namespace ExcelTrans.Services
             using (var table = ExcelFileConnection.GetAllRows(path, 2, false, true, sheetName ?? "Sheet1$"))
                 foreach (DataRow r in table.Rows)
                 {
-                    if (row > 0)
+                    if (startRow > 0)
                     {
-                        row--;
+                        startRow--;
                         continue;
                     }
                     var list = new Collection<string>();
@@ -210,6 +197,19 @@ namespace ExcelTrans.Services
                 list.Add(str.Trim());
             }
             return list;
+        }
+
+        static Exception ParsingException(Exception e, string xml)
+        {
+            var msg = e.Message;
+            if (!msg.Contains("Line") || !msg.Contains("position"))
+                return e;
+            var idx = msg.IndexOf("Line"); var idx2 = msg.IndexOf(",", idx); var line = int.Parse(msg.Substring(idx + 4, idx2 - idx - 4));
+            if (line != 1)
+                return e;
+            idx = msg.IndexOf("position"); idx2 = msg.IndexOf(".", idx); var position = int.Parse(msg.Substring(idx + 8, idx2 - idx - 8));
+            var error = xml.Substring(position - 30, 30) + "!!" + xml.Substring(position, 20);
+            return new ArgumentOutOfRangeException(msg, error);
         }
     }
 }
